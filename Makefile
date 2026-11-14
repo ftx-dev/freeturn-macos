@@ -4,7 +4,7 @@ L := /Library/Developer/CommandLineTools/Library/Developer/usr/lib
 # Xcode нет: Testing.framework лежит в Command Line Tools вне путей поиска по умолчанию.
 SWIFT_TEST_FLAGS := -Xswiftc -F$(F) -Xlinker -F$(F) -Xlinker -rpath -Xlinker $(F) -Xlinker -rpath -Xlinker $(L)
 
-.PHONY: deps engine helper app test test-go test-app run ftctl
+.PHONY: deps engine helper app test test-go test-app test-sh run ftctl
 
 deps:
 	git submodule update --init
@@ -21,7 +21,10 @@ test-go:
 test-app:
 	cd App && swift test $(SWIFT_TEST_FLAGS)
 
-test: test-go test-app
+test-sh:
+	scripts/proof-lib.test.sh
+
+test: test-go test-app test-sh
 
 ftctl:
 	cd App && swift build --product ftctl

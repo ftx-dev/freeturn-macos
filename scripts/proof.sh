@@ -5,6 +5,7 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+. "$ROOT/scripts/proof-lib.sh"
 OUT="$ROOT/build/proof"
 LINK="${1:?usage: scripts/proof.sh 'freeturn://…' [call-link] [wg.conf]}"
 CALL="${2:-}"
@@ -79,7 +80,7 @@ for _ in $(seq "$WAIT"); do
   grep -q '"state":"connected"' "$OUT/core.log" && break
   grep -q '"ev":"error"' "$OUT/core.log" && break
   # Ручная капча: открываем локальную страницу ядра в браузере.
-  URL="$(grep '"ev":"captcha"' "$OUT/core.log" | grep '"manual":true' | tail -1 | sed -n 's/.*"url":"\([^"]*\)".*/\1/p')"
+  URL="$(captcha_url "$OUT/core.log")"
   if [ -n "$URL" ] && [ "$URL" != "$OPENED" ]; then
     echo "Нужна капча — открываю $URL"; open "$URL"; OPENED="$URL"
   fi
