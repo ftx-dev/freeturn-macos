@@ -23,6 +23,7 @@ test-app:
 
 test-sh:
 	scripts/proof-lib.test.sh
+	scripts/install-daemon.test.sh
 
 test: test-go test-app test-sh
 

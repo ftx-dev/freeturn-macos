@@ -221,3 +221,24 @@ func engineAcceptsGeneratedConfig(wg: String) throws {
     proc.waitUntilExit()
     #expect(proc.terminationStatus == 0, "engine rejected config: \(output)")
 }
+
+/// Эталон для Go-теста helper/internal/daemon/sanitize_test.go: служба обязана принимать
+/// то, что собирает приложение. Перегенерация: FT_WRITE_FIXTURES=1 make test-app.
+@Test func engineFixtureMatchesDaemonTestdata() throws {
+    let p = RoutingProfile(id: "fixture", name: "fixture", defaultAction: .vpn, rules: [
+        RoutingRule(id: "r1", kind: .app, value: "/Applications/Safari.app", action: .direct),
+        RoutingRule(id: "r2", kind: .app, value: "/usr/bin/curl", action: .direct),
+        RoutingRule(id: "r3", kind: .domainSuffix, value: "yandex.ru", action: .direct),
+        RoutingRule(id: "r4", kind: .domainKeyword, value: "google", action: .vpn),
+        RoutingRule(id: "r5", kind: .cidr, value: "10.0.0.0/8", action: .direct),
+        RoutingRule(id: "r6", kind: .domain, value: "ads.example", action: .block),
+    ])
+    let json = try EngineConfig.build(wg: WGConfig.parse(amneziaWG), corePort: 41000, profile: p, settings: EngineSettings())
+    let url = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        .appendingPathComponent("helper/internal/daemon/testdata/engine.json")
+    if ProcessInfo.processInfo.environment["FT_WRITE_FIXTURES"] == "1" {
+        try Data(json.utf8).write(to: url)
+    }
+    #expect(try String(contentsOf: url, encoding: .utf8) == json)
+}
