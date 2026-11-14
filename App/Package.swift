@@ -7,6 +7,7 @@ let package = Package(
     platforms: [.macOS(.v14)],
     targets: [
         .target(name: "FreeTurnKit"),
+        .executableTarget(name: "ftctl", dependencies: ["FreeTurnKit"]),
         .testTarget(name: "FreeTurnKitTests", dependencies: ["FreeTurnKit"]),
     ]
 )
