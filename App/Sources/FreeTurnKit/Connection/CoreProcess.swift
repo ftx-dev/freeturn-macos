@@ -62,7 +62,7 @@ public final class CoreProcess: CoreControlling {
         input = nil
         guard let process else { return }
         self.process = nil
-        nonisolated(unsafe) let stuck = process
+        let stuck = process
         DispatchQueue.global().asyncAfter(deadline: .now() + 6) {
             if stuck.isRunning { stuck.terminate() }
         }
