@@ -21,7 +21,7 @@ say() { echo "$*" | tee -a "$RESULT"; }
 check() { # check <имя> <ok|fail> <подробности>
   if [ "$2" = ok ]; then say "PASS  $1 — $3"; else say "FAIL  $1 — $3"; fi
 }
-ip_of() { "${2:-/usr/bin/curl}" -s --max-time 15 "$1" 2>/dev/null | tr -d '[:space:]'; }
+ip_of() { /usr/bin/curl -s --max-time 15 "$1" 2>/dev/null | tr -d '[:space:]'; }
 
 ENGINE_PID=""
 cleanup() {
@@ -49,11 +49,13 @@ cd "$ROOT"
 [ -x build/amnezia-box ] && [ -x build/freeturn-core ] || { say "нет бинарников: выполни make engine helper"; exit 1; }
 make ftctl >/dev/null 2>&1 || { say "ftctl не собрался"; exit 1; }
 
-# Копия curl по другому пути - на ней проверяется правило по приложению.
-cp /usr/bin/curl "$OUT/curl-direct"
+# Правило по приложению проверяется на nscurl: копию curl по другому пути система убивает
+# при запуске (платформенный бинарник Apple вне своего места), и проверка была бы ложной.
+APP_BIN=/usr/bin/nscurl
+rm -f "$OUT/curl-direct"
 
 GEN=(App/.build/debug/ftctl gen --link "$LINK" --out "$OUT"
-     --rule "app=$OUT/curl-direct=direct" --rule "domainSuffix=icanhazip.com=direct")
+     --rule "app=$APP_BIN=direct" --rule "domainSuffix=icanhazip.com=direct")
 [ -n "$CALL" ] && GEN+=(--call-link "$CALL")
 [ -n "$WG" ] && GEN+=(--wg "$WG")
 "${GEN[@]}" | tee -a "$RESULT" || exit 1
@@ -115,10 +117,10 @@ DOMAIN_IP="$(ip_of "$DIRECT_URL")"
   && check "правило по домену (напрямую)" ok "icanhazip.com видит $DOMAIN_IP" \
   || check "правило по домену (напрямую)" fail "icanhazip.com видит '${DOMAIN_IP:-нет ответа}', ожидался $HOME_IP"
 
-APP_IP="$(ip_of "$IP_URL" "$OUT/curl-direct")"
+APP_IP="$("$APP_BIN" "$IP_URL" 2>/dev/null | tr -d '[:space:]')"
 [ "$APP_IP" = "$HOME_IP" ] \
-  && check "правило по приложению (напрямую)" ok "копия curl видит $APP_IP" \
-  || check "правило по приложению (напрямую)" fail "копия curl видит '${APP_IP:-нет ответа}', ожидался $HOME_IP"
+  && check "правило по приложению (напрямую)" ok "nscurl видит $APP_IP, curl при этом $VPN_IP" \
+  || check "правило по приложению (напрямую)" fail "nscurl видит '${APP_IP:-нет ответа}', ожидался $HOME_IP"
 
 # Петля проявилась бы как срыв сессии сразу после подъёма туннеля.
 BEFORE="$(grep -c '"state":"connecting"' "$OUT/core.log")"

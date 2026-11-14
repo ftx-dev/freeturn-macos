@@ -122,7 +122,7 @@ App/Tests/FreeTurnKitTests/
   - `struct ServerOpts`: `obfProfile="none"`, `obfKey=""`, `obfTimingMs=0`, `proxyMode="udp"`; `var obfEnabled: Bool`.
   - `struct Server: Identifiable`: `id` (UUID-строка), `name`, `client`, `opts`.
   - `struct ServersFile`: `list: [Server]`, `activeId: String?`; `var active: Server?`.
-  - `struct AppSettings`: `theme="system"`, `language="system"`, `privacyMode=false`, `advancedCaptcha=false`, `autoConnect=false`, `launchAtLogin=false`, `debugScreen=false`, `tunStack="mixed"`, `wasConnected=false`.
+  - `struct AppSettings`: `theme="system"`, `language="system"`, `privacyMode=false`, `advancedCaptcha=false`, `autoConnect=false`, `launchAtLogin=false`, `debugScreen=false`, `tunStack="mixed"`, `captchaTarget="window"` (или `"browser"`), `wasConnected=false`.
   - `enum Provider { static let relay = "vk", direct = "direct" }`, `enum ObfProfile { static let values = ["none","rtpopus","rtpopus2","rtpopus3"]; static func isValidKey(_:) -> Bool }` (64 hex).
   - `final class Store`: `init(directory: URL)`, `func load<T: Decodable>(_ type: T.Type, from name: String, default: T) throws -> T`, `func save<T: Encodable>(_ value: T, to name: String) throws`, `func ownClientId() throws -> String`.
 - Имена ключей JSON совпадают с Android `ServerJson` (`serverAddress`, `callLink`, `wireGuardConfig`, `obfProfile`, …); неизвестные ключи игнорируются, отсутствующие берут значения по умолчанию.
@@ -470,25 +470,38 @@ App/Tests/FreeTurnKitTests/
 
 ### Task 14: Капча
 
+Изменено 2026-11-14 по просьбе пользователя: ручная капча — в отдельном окне поверх остальных, с настройкой «окно или браузер» (`AppSettings.captchaTarget`, уже добавлено).
+
 **Files:**
-- Create: `App/Sources/FreeTurnKit/Captcha/CaptchaURL.swift`
-- Create: `App/Sources/FreeTurn/Views/Captcha/CaptchaSheet.swift`, `CaptchaWebView.swift`, `Services/AutoCaptchaHost.swift`, `Services/Notifier.swift`
-- Modify: `Views/RootView.swift`, `Views/HomeView.swift`, `Views/MenuBarView.swift`
-- Test: `App/Tests/FreeTurnKitTests/CaptchaURLTests.swift`
+- Create: `App/Sources/FreeTurnKit/Captcha/CaptchaURL.swift`, `Captcha/CaptchaPresenter.swift`
+- Create: `App/Sources/FreeTurn/Views/Captcha/CaptchaWindowController.swift`, `CaptchaWebView.swift`, `Services/AutoCaptchaHost.swift`
+- Modify: `AppModel.swift`, `Views/HomeView.swift`, `Views/MenuBarView.swift`, `Views/SettingsView.swift`
+- Test: `App/Tests/FreeTurnKitTests/CaptchaURLTests.swift`, `CaptchaPresenterTests.swift`
 
 **Interfaces:**
-- Consumes: `ConnectionController.captcha`, `ConnectionState.captcha`.
+- Consumes: `ConnectionController.captcha`, `AppSettings.captchaTarget`.
 - Produces:
   - `enum CaptchaURL { static func isLocal(_ url: String) -> Bool }` — схема `http`, хост `127.0.0.1` или `localhost`, порт `8765`, без userinfo.
+  - `enum CaptchaAction: Equatable { showWindow(String), openBrowser(String), loadHidden(String), dismiss, none }`.
+  - `struct CaptchaPresenter { mutating func action(for captcha: (url: String, manual: Bool)?, target: String) -> CaptchaAction; mutating func userClosedWindow(); func reopenAction(target: String) -> CaptchaAction }` — чистая логика без UI: что делать при каждом событии капчи.
+  - `@MainActor final class CaptchaWindowController { func show(url: String, onUserClose: @escaping () -> Void); func close() }` — `NSPanel` 460×640, уровень `.floating`, заголовок «Проверка на робота».
   - `@MainActor final class AutoCaptchaHost { func show(url: String); func clear() }` — невидимый `WKWebView`.
-  - `enum Notifier { static func captchaNeeded(); static func clearCaptcha(); static func connectionFailed(_ reason: String) }`.
 
-- [ ] **Step 1: тесты.** `isLocal`: `http://127.0.0.1:8765/a` и `http://localhost:8765/` → `true`; `https://localhost:8765/`, `http://localhost:8766/`, `http://evil.com:8765/`, `http://user@localhost:8765/`, `http://localhost.evil.com:8765/`, пустая строка, `file:///etc/passwd` → `false`.
-- [ ] **Step 2:** Run `make test-app` — FAIL, реализовать, PASS.
-- [ ] **Step 3: WebView.** Общая фабрика: `WKWebsiteDataStore.nonPersistent()`, JavaScript включён, навигация и новые окна разрешены только для `CaptchaURL.isLocal`, прочее отменяется. Ручная панель: заголовок «Проверка на робота», подпись «Пройдите проверку для продолжения», полоса загрузки, кнопка «Закрыть»; размер 460×640; для нелокального адреса вместо WebView текст «Капча открыта во внешнем браузере. После прохождения вернитесь в приложение».
-- [ ] **Step 4: поведение.** Ручная капча при видимом окне — sheet на `RootView`, закрывается при `captcha == nil`. Окно скрыто — `Notifier.captchaNeeded()`, иконка строки меню в состоянии «капча», пункт «Пройти проверку» открывает окно с панелью. Панель закрыта вручную — на Главной статус «Нужна проверка CAPTCHA» и кнопка «Пройти проверку». Автоматическая (`manual == false`) — `AutoCaptchaHost.show`, статус «CAPTCHA решается…»; `clear()` при пустом адресе и при отключении.
-- [ ] **Step 5: проверка.** Run `make app`. Ручная проверка на живой ссылке на звонок с включённой «Ручной капчей» — в Task 17.
-- [ ] **Step 6:** Commit `feat(app): captcha sheet, background solver and notifications`.
+- [ ] **Step 1: тесты `CaptchaURLTests`.** `isLocal`: `http://127.0.0.1:8765/a` и `http://localhost:8765/` → `true`; `https://localhost:8765/`, `http://localhost:8766/`, `http://evil.com:8765/`, `http://user@localhost:8765/`, `http://localhost.evil.com:8765/`, пустая строка, `file:///etc/passwd` → `false`.
+- [ ] **Step 2: тесты `CaptchaPresenterTests`.**
+  - `manualInWindowMode`: событие `(local, manual: true)`, `target "window"` → `.showWindow(url)`.
+  - `manualInBrowserMode`: `target "browser"` → `.openBrowser(url)`.
+  - `sameUrlIsNotShownTwice`: повтор того же события → `.none` (ядро шлёт состояние не один раз).
+  - `newUrlReplacesOld`: другой адрес → снова `.showWindow`.
+  - `clearedCaptchaDismisses`: `nil` или пустой адрес после показа → `.dismiss`; без показа → `.none`.
+  - `autoCaptchaLoadsHidden`: `manual: false` → `.loadHidden(url)`, в обоих режимах.
+  - `nonLocalUrlNeverShown`: `http://evil.com:8765/x` → `.none` в любом режиме (внешний адрес не открываем ни в окне, ни в браузере).
+  - `reopenAfterUserClose`: после `userClosedWindow()` повтор того же события → `.none`, а `reopenAction` → `.showWindow(url)`; в режиме браузера → `.openBrowser(url)`; без активной капчи → `.none`.
+- [ ] **Step 3:** Run `make test-app` — FAIL, реализовать, PASS.
+- [ ] **Step 4: WebView.** Общая фабрика: `WKWebsiteDataStore.nonPersistent()`, JavaScript включён, навигация и новые окна разрешены только для `CaptchaURL.isLocal`, прочее отменяется. Окно: подпись «Пройдите проверку для продолжения», полоса загрузки, WebView.
+- [ ] **Step 5: поведение.** `AppModel` на каждое изменение `connection.captcha` спрашивает `CaptchaPresenter` и выполняет действие: `showWindow` — окно поверх остальных и активация приложения; `openBrowser` — `NSWorkspace.shared.open`; `loadHidden` — `AutoCaptchaHost.show`, статус «CAPTCHA решается…»; `dismiss` — закрыть окно и `AutoCaptchaHost.clear()`. Отключение всегда даёт `dismiss`. Пока капча активна, на Главной и в строке меню статус «Нужна проверка CAPTCHA» и кнопка «Пройти проверку» (`reopenAction`). В настройках — «Открывать капчу: в окне приложения / в браузере».
+- [ ] **Step 6: проверка.** Run `make app`. Проверка на живой ссылке на звонок с включённой «Ручной капчей» — в Task 17.
+- [ ] **Step 7:** Commit `feat(app): captcha window, browser mode and background solver`.
 
 ---
 
@@ -553,7 +566,8 @@ App/Tests/FreeTurnKitTests/
   - [ ] Relay: подключение, счётчик потоков, скорость и трафик идут, пинг показан.
   - [ ] Direct: подключение без ссылки на звонок.
   - [ ] Правило по приложению и правило по домену работают; «Только выбранное через VPN» работает.
-  - [ ] Ручная капча: панель появляется и закрывается сама; при свёрнутом окне приходит уведомление.
+  - [ ] Ручная капча: окно появляется поверх остальных и закрывается само; в режиме «в браузере» открывается браузер.
+  - [ ] Правило по приложению (не проверено на пробе): `nscurl` идёт напрямую, `curl` — через VPN.
   - [ ] Смена Wi-Fi и сон на 2 минуты: подключение восстанавливается без ручных действий.
   - [ ] `kill -9` приложения: интернет не пропадает, utun исчезает за ≤ 6 с.
   - [ ] Приватный режим: в логах и в интерфейсе нет IP, ключей и ссылки на звонок.

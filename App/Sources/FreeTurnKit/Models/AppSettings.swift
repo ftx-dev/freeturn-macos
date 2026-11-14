@@ -7,6 +7,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var launchAtLogin = false
     public var debugScreen = false
     public var tunStack = "mixed"
+    /// Где показывать ручную капчу: "window" - отдельное окно приложения, "browser" - браузер по умолчанию.
+    public var captchaTarget = "window"
     /// Прошлую сессию пользователь не выключал сам - основание для автоподключения.
     public var wasConnected = false
 
@@ -24,6 +26,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         debugScreen = c.value(.debugScreen, d.debugScreen)
         let stack = c.value(.tunStack, d.tunStack)
         tunStack = ["system", "gvisor", "mixed"].contains(stack) ? stack : d.tunStack
+        captchaTarget = c.value(.captchaTarget, d.captchaTarget) == "browser" ? "browser" : "window"
         wasConnected = c.value(.wasConnected, d.wasConnected)
     }
 }
