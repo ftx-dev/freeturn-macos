@@ -3,3 +3,8 @@
 - сделать установщик версии для amd64 и старой macos там 14 или 15 например. но без критичных изменений в коде.
 
 иконку приложения поставить отсюда https://github.com/hackdiaz-dev/turn-proxy-android/tree/main/app/src/main/res
+
+--- статус (2026-11-16) ---
+[готово] DMG arm64: make dmg -> build/FreeTurn-0.1.0-arm64.dmg
+[готово] DMG Intel (x86_64): build/FreeTurn-0.1.0-x86_64.dmg, минимальная macOS 14 (как и у arm64; ниже 14 нельзя без переписывания интерфейса - Observation/SwiftUI 14). Код не менялся, только сборка.
+[готово] иконка из Android-клиента: адаптивная иконка (вектор) -> App/Bundle/AppIcon.svg -> AppIcon.icns (make icon)
