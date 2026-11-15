@@ -58,3 +58,47 @@ public struct RoutingFile: Codable, Equatable, Sendable {
             ?? Presets.allViaVPN
     }
 }
+
+extension RoutingProfile {
+    /// Копия для правки: новые идентификаторы, не встроенная.
+    func editableCopy(name: String) -> RoutingProfile {
+        RoutingProfile(name: name, defaultAction: defaultAction,
+                       rules: rules.map { RoutingRule(kind: $0.kind, value: $0.value, action: $0.action, enabled: $0.enabled) })
+    }
+}
+
+extension RoutingFile {
+    public static func initial() -> RoutingFile {
+        RoutingFile(profiles: [Presets.allViaVPN, Presets.russiaDirect], sharedProfileId: Presets.allViaVPN.id)
+    }
+
+    /// Файл с диска: встроенные профили берутся из текущей версии приложения, свои сохраняются.
+    public func normalized() -> RoutingFile {
+        let own = profiles.filter { !$0.builtIn && $0.id != Presets.allViaVPN.id && $0.id != Presets.russiaDirect.id }
+        let all = [Presets.allViaVPN, Presets.russiaDirect] + own
+        return RoutingFile(profiles: all,
+                           sharedProfileId: all.contains { $0.id == sharedProfileId } ? sharedProfileId : Presets.allViaVPN.id)
+    }
+
+    public mutating func add(_ profile: RoutingProfile) {
+        profiles.append(profile)
+    }
+
+    public mutating func remove(id: String) {
+        profiles.removeAll { $0.id == id && !$0.builtIn }
+        if !profiles.contains(where: { $0.id == sharedProfileId }) { sharedProfileId = Presets.allViaVPN.id }
+    }
+
+    @discardableResult
+    public mutating func clone(id: String) -> RoutingProfile? {
+        guard let source = profiles.first(where: { $0.id == id }) else { return nil }
+        let copy = source.editableCopy(name: source.name + " (копия)")
+        profiles.append(copy)
+        return copy
+    }
+
+    public mutating func update(_ profile: RoutingProfile) {
+        guard let i = profiles.firstIndex(where: { $0.id == profile.id }), !profiles[i].builtIn else { return }
+        profiles[i] = profile
+    }
+}

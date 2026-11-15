@@ -49,7 +49,7 @@ struct HomeView: View {
                     failureView
                     if case .connected = state { StatsGrid() }
                     if let profile = model.activeProfile {
-                        Label("\(L("Маршруты:")) \(profile.name)", systemImage: "arrow.triangle.branch")
+                        Label("\(L("Маршруты:")) \(model.displayName(profile))", systemImage: "arrow.triangle.branch")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }

@@ -38,6 +38,7 @@ struct RootView: View {
         switch model.section {
         case .home: HomeView()
         case .servers: ServersView()
+        case .routing: RoutingView()
         default: ContentUnavailableView(L("Скоро"), systemImage: model.section.icon)
         }
     }

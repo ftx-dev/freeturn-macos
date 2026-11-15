@@ -35,7 +35,7 @@ final class AppModel {
     let connection: ConnectionController
 
     var servers = ServersFile()
-    var routing = RoutingFile(profiles: [Presets.allViaVPN, Presets.russiaDirect], sharedProfileId: Presets.allViaVPN.id)
+    var routing = RoutingFile.initial()
     var settings = AppSettings()
     var section: AppSection = .home
 
@@ -67,7 +67,7 @@ final class AppModel {
             portPicker: PortPicker.freeUDPPort)
 
         servers = load(ServersFile.self, "servers.json", servers)
-        routing = load(RoutingFile.self, "routing.json", routing)
+        routing = load(RoutingFile.self, "routing.json", routing).normalized()
         settings = load(AppSettings.self, "settings.json", settings)
         L10n.language = settings.language
         // FREETURN_SECTION - открыть приложение сразу на нужном разделе: для проверок интерфейса.

@@ -125,7 +125,7 @@ struct ServerDetailView: View {
             Section(L("Маршруты")) {
                 Picker(L("Профиль маршрутов"), selection: s.client.routingProfileId) {
                     Text(L("Общий")).tag(String?.none)
-                    ForEach(model.routing.profiles) { Text($0.name).tag(String?.some($0.id)) }
+                    ForEach(model.routing.profiles) { Text(model.displayName($0)).tag(String?.some($0.id)) }
                 }
             }
 

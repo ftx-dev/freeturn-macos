@@ -119,6 +119,11 @@ public enum EngineConfig {
         return ep
     }
 
+    /// Примет ли движок такое правило - для проверки при вводе.
+    public static func isValid(_ rule: RoutingRule) -> Bool {
+        (try? matcher(for: rule)) != nil
+    }
+
     /// Условие правила в терминах движка; бросает на значении, которое движок не примет.
     private static func matcher(for rule: RoutingRule) throws -> [String: Any] {
         let value = rule.value.trimmingCharacters(in: .whitespacesAndNewlines)
