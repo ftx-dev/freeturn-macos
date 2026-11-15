@@ -88,3 +88,48 @@ func daemonClientTalksToRealDaemon() async throws {
     await #expect(throws: DaemonError.self) { try await client.start(config: #"{"experimental":{}}"#) }
     client.close()
 }
+
+/// Сервер, который на каждое подключение сразу отвечает «busy» и закрывает соединение -
+/// так служба встречает второго клиента.
+private func busyServer(at path: String) -> Int32 {
+    unlink(path)
+    let fd = socket(AF_UNIX, SOCK_STREAM, 0)
+    var addr = sockaddr_un()
+    addr.sun_family = sa_family_t(AF_UNIX)
+    withUnsafeMutableBytes(of: &addr.sun_path) { $0.copyBytes(from: path.utf8) }
+    _ = withUnsafePointer(to: &addr) {
+        $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size)) }
+    }
+    listen(fd, 64)
+    Thread.detachNewThread {
+        let reply = Array(#"{"ok":false,"err":"busy"}"#.utf8) + [0x0A]
+        while true {
+            let conn = accept(fd, nil, nil)
+            guard conn >= 0 else { return }
+            _ = write(conn, reply, reply.count)
+            close(conn)
+        }
+    }
+    return fd
+}
+
+// Ответ «busy» и закрытие соединения приходят почти одновременно с нашим запросом:
+// отказ службы не должен превращаться в «соединение закрыто».
+@MainActor @Test func busyReplySurvivesImmediateClose() async {
+    let path = "/tmp/ftb\(UInt32.random(in: 0...999_999)).sock"
+    let server = busyServer(at: path)
+    defer { close(server); unlink(path) }
+    var other: [String] = []
+    for _ in 0..<300 {
+        let client = DaemonClient(socketPath: path)
+        do {
+            _ = try await client.status()
+            other.append("no error")
+        } catch DaemonError.busy {
+        } catch {
+            other.append("\(error)")
+        }
+        client.close()
+    }
+    #expect(other.isEmpty, "вместо busy: \(Set(other)), \(other.count) из 300")
+}
