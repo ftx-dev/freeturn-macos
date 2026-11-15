@@ -48,6 +48,12 @@ final class AppModel {
     var importDraft: ImportDraft?
     var importError: String?
 
+    /// Ручная капча ждёт пользователя - на главной и в меню появляется «Пройти проверку».
+    var captchaNeedsAttention = false
+    private var captchaPresenter = CaptchaPresenter()
+    private let captchaWindow = CaptchaWindowController()
+    private let autoCaptcha = AutoCaptchaHost()
+
     var installingDaemon = false
     var daemonInstallError: String?
 
@@ -70,6 +76,11 @@ final class AppModel {
         routing = load(RoutingFile.self, "routing.json", routing).normalized()
         settings = load(AppSettings.self, "settings.json", settings)
         L10n.language = settings.language
+        connection.onCaptchaChange = { [weak self] request in self?.handleCaptcha(request) }
+        // FREETURN_DEMO_CAPTCHA - показать окно капчи без подключения: для проверки интерфейса.
+        if ProcessInfo.processInfo.environment["FREETURN_DEMO_CAPTCHA"] != nil {
+            DispatchQueue.main.async { self.handleCaptcha(CaptchaRequest(url: "http://localhost:8765/", manual: true)) }
+        }
         // FREETURN_SECTION - открыть приложение сразу на нужном разделе: для проверок интерфейса.
         if let raw = ProcessInfo.processInfo.environment["FREETURN_SECTION"], let start = AppSection(rawValue: raw) {
             section = start
@@ -140,6 +151,36 @@ final class AppModel {
             } catch {
                 daemonInstallError = String(format: L("Не удалось установить службу: %@"), "\(error)")
             }
+        }
+    }
+
+    private func handleCaptcha(_ request: CaptchaRequest?) {
+        perform(captchaPresenter.action(for: request, target: settings.captchaTarget))
+        captchaNeedsAttention = captchaPresenter.needsAttention
+    }
+
+    /// Открыть ручную капчу снова - после того как окно закрыли, не пройдя её.
+    func reopenCaptcha() {
+        perform(captchaPresenter.reopenAction(target: settings.captchaTarget))
+    }
+
+    private func perform(_ action: CaptchaAction) {
+        switch action {
+        case let .showWindow(url):
+            autoCaptcha.clear()
+            captchaWindow.show(url: url) {}
+        case let .openBrowser(url):
+            autoCaptcha.clear()
+            captchaWindow.close()
+            if let target = URL(string: url) { NSWorkspace.shared.open(target) }
+        case let .loadHidden(url):
+            captchaWindow.close()
+            autoCaptcha.show(url: url)
+        case .dismiss:
+            captchaWindow.close()
+            autoCaptcha.clear()
+        case .none:
+            break
         }
     }
 

@@ -40,6 +40,8 @@ public final class ConnectionController {
     public private(set) var activeServerId: String?
 
     @ObservationIgnored public var onLog: ((LogLine) -> Void)?
+    /// Капча появилась, сменилась или снята (nil).
+    @ObservationIgnored public var onCaptchaChange: ((CaptchaRequest?) -> Void)?
 
     @ObservationIgnored private let makeCore: () -> CoreControlling
     @ObservationIgnored private let makeEngine: () -> EngineControlling
@@ -160,7 +162,7 @@ public final class ConnectionController {
         case let .stats(newStats):
             stats = newStats
         case let .captcha(url, manual):
-            captcha = url.isEmpty ? nil : CaptchaRequest(url: url, manual: manual)
+            setCaptcha(url.isEmpty ? nil : CaptchaRequest(url: url, manual: manual))
         case let .error(cmd, err):
             if cmd == "start" { await teardown(.core(err)) }
             else { onLog?(LogLine(level: .error, source: .core, text: "\(cmd): \(err)")) }
@@ -228,6 +230,12 @@ public final class ConnectionController {
         core?.send(.wake)
     }
 
+    private func setCaptcha(_ request: CaptchaRequest?) {
+        guard request != captcha else { return }
+        captcha = request
+        onCaptchaChange?(request)
+    }
+
     private func fail(_ failure: ConnectionFailure) {
         state = .failed(failure)
     }
@@ -246,7 +254,7 @@ public final class ConnectionController {
         engine?.close()
         core?.send(.stop)
         core?.terminate()
-        captcha = nil
+        setCaptcha(nil)
         connectedSince = nil
         stats = TrafficStats()
         engineUp = false

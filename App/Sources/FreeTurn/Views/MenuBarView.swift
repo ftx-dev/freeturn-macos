@@ -14,6 +14,9 @@ struct MenuBarView: View {
             Text("↓ \(Formatters.rate(stats.rxRate, style: L10n.unitStyle))   ↑ \(Formatters.rate(stats.txRate, style: L10n.unitStyle))")
         }
         Divider()
+        if model.captchaNeedsAttention {
+            Button(L("Пройти проверку")) { model.reopenCaptcha() }
+        }
         Button(state.isActive ? L("Отключить") : L("Подключить")) { model.toggleConnection() }
             .disabled(model.activeServer == nil || state == .stopping)
         if !model.servers.list.isEmpty {

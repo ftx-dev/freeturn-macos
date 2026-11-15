@@ -21,7 +21,7 @@ struct HomeView: View {
         case .off: L("Нажмите для подключения")
         case .starting: L("Запуск…")
         case .connecting: L("Подключение…")
-        case .captcha: L("Проверка CAPTCHA")
+        case .captcha: model.captchaNeedsAttention ? L("Нужна проверка CAPTCHA") : L("CAPTCHA решается…")
         case .connected: L("Подключено")
         case .stopping: L("Отключение…")
         case .failed: L("Ошибка")
@@ -46,6 +46,11 @@ struct HomeView: View {
                         .padding(.top, 20)
                     Text(title).font(.title2.weight(.semibold))
                     serverLine
+                    if model.captchaNeedsAttention {
+                        Button(L("Пройти проверку"), systemImage: "checkmark.shield") { model.reopenCaptcha() }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.orange)
+                    }
                     failureView
                     if case .connected = state { StatsGrid() }
                     if let profile = model.activeProfile {

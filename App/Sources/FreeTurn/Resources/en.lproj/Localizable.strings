@@ -163,3 +163,8 @@
 "Это не файл профиля маршрутов FreeTurn." = "This is not a FreeTurn routing profile file.";
 "запущено" = "running";
 "общий" = "shared";
+"Проверка на робота" = "Robot check";
+"Пройдите проверку для продолжения. Окно закроется само." = "Complete the check to continue. The window will close by itself.";
+"Нужна проверка CAPTCHA" = "CAPTCHA check required";
+"CAPTCHA решается…" = "Solving CAPTCHA…";
+"Пройти проверку" = "Complete the check";

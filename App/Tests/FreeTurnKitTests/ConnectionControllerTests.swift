@@ -343,3 +343,16 @@ import Testing
     await rig.connect()
     #expect(rig.log.calls.filter { $0 == "core.launch" }.count == 1)
 }
+
+@MainActor @Test func captchaChangesNotify() async {
+    let rig = Rig()
+    var seen: [CaptchaRequest?] = []
+    rig.controller.onCaptchaChange = { seen.append($0) }
+    await rig.connect()
+    await rig.controller.handle(coreEvent: .captcha(url: "http://localhost:8765/x", manual: true))
+    await rig.controller.handle(coreEvent: .captcha(url: "", manual: false))
+    await rig.controller.handle(coreEvent: .captcha(url: "http://localhost:8765/y", manual: false))
+    await rig.controller.disconnect()
+    #expect(seen == [CaptchaRequest(url: "http://localhost:8765/x", manual: true), nil,
+                     CaptchaRequest(url: "http://localhost:8765/y", manual: false), nil])
+}
