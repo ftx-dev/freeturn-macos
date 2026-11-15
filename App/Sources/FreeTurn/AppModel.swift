@@ -33,6 +33,8 @@ enum AppSection: String, CaseIterable, Identifiable {
 final class AppModel {
     let store: Store
     let connection: ConnectionController
+    let logs = LogStore()
+    let logFile: LogFile
 
     var servers = ServersFile()
     var routing = RoutingFile.initial()
@@ -66,6 +68,7 @@ final class AppModel {
         self.store = store
         let helper = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/freeturn-core")
         let stateDir = store.directory.appendingPathComponent("core-state")
+        logFile = LogFile(directory: store.directory.appendingPathComponent("logs"))
         connection = ConnectionController(
             core: { CoreProcess(binary: helper, stateDir: stateDir) },
             engine: { DaemonClient() },
@@ -77,6 +80,9 @@ final class AppModel {
         settings = load(AppSettings.self, "settings.json", settings)
         L10n.language = settings.language
         connection.onCaptchaChange = { [weak self] request in self?.handleCaptcha(request) }
+        connection.onLog = { [weak self] line in self?.log(line) }
+        // Метка в файле лога: по ней видно, где приложение перезапускали.
+        log(LogLine(level: .info, source: .app, text: "FreeTurn запущен, ядро \(AppInfo.coreVersion), сеть \(SystemNetwork.current()?.ifName ?? "нет")"))
         // FREETURN_DEMO_CAPTCHA - показать окно капчи без подключения: для проверки интерфейса.
         if ProcessInfo.processInfo.environment["FREETURN_DEMO_CAPTCHA"] != nil {
             DispatchQueue.main.async { self.handleCaptcha(CaptchaRequest(url: "http://localhost:8765/", manual: true)) }
@@ -129,6 +135,8 @@ final class AppModel {
 
     func connect() async {
         guard let server = activeServer else { return }
+        // Экранный лог - про текущую сессию; файл на диске хранит и прошлые.
+        logs.clear()
         let clientId = (try? store.ownClientId()) ?? ""
         await connection.connect(server: server, profile: routing.profile(for: server),
                                  settings: settings, ownClientId: clientId)
@@ -152,6 +160,36 @@ final class AppModel {
                 daemonInstallError = String(format: L("Не удалось установить службу: %@"), "\(error)")
             }
         }
+    }
+
+    private static let logTime: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return f
+    }()
+
+    /// Строка лога: на экран и в файл. Секреты прячутся до записи, а не при показе.
+    func log(_ line: LogLine) {
+        var line = line
+        if settings.privacyMode {
+            line.text = Redactor.redact(line.text, secrets: secrets)
+        } else if line.text.hasPrefix("Команда:") {
+            // Команду запуска часто копируют в чаты: ссылку на звонок и ключи прячем всегда.
+            line.text = Redactor.redact(line.text, secrets: secrets, maskAddresses: false)
+        }
+        logs.append(line)
+        logFile.append("\(Self.logTime.string(from: line.date)) [\(line.source.rawValue)] [\(line.level.rawValue)] \(line.text)")
+    }
+
+    /// Секреты активного сервера, которые не ловятся по виду: ключи WireGuard, ссылка на звонок.
+    private var secrets: [String] {
+        guard let server = activeServer else { return [] }
+        var list = [server.client.callLink, server.opts.obfKey, server.client.clientId]
+        if let wg = try? WGConfig.parse(server.client.wireGuardConfig) {
+            list.append(wg.privateKey)
+            list += wg.peers.compactMap(\.presharedKey)
+        }
+        return list
     }
 
     private func handleCaptcha(_ request: CaptchaRequest?) {

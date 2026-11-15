@@ -356,3 +356,14 @@ import Testing
     #expect(seen == [CaptchaRequest(url: "http://localhost:8765/x", manual: true), nil,
                      CaptchaRequest(url: "http://localhost:8765/y", manual: false), nil])
 }
+
+// Команда запуска - главная строка при разборе сбоев: она должна быть в логе.
+@MainActor @Test func launchCommandIsLogged() async {
+    let rig = Rig()
+    var lines: [LogLine] = []
+    rig.controller.onLog = { lines.append($0) }
+    await rig.connect()
+    await rig.controller.handle(coreEvent: .args("-peer 1.2.3.4:56000 -provider vk"))
+    #expect(lines.contains { $0.source == .app && $0.text == "Команда: -peer 1.2.3.4:56000 -provider vk" })
+    #expect(rig.controller.launchArgs == "-peer 1.2.3.4:56000 -provider vk")
+}

@@ -157,6 +157,7 @@ public final class ConnectionController {
             coreVersion = version
         case let .args(args):
             launchArgs = args
+            onLog?(LogLine(level: .info, source: .app, text: "Команда: \(args)"))
         case let .log(level, msg, date):
             onLog?(LogLine(date: date, level: level, source: .core, text: msg))
         case let .stats(newStats):

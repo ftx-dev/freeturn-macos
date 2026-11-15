@@ -168,3 +168,17 @@
 "Нужна проверка CAPTCHA" = "CAPTCHA check required";
 "CAPTCHA решается…" = "Solving CAPTCHA…";
 "Пройти проверку" = "Complete the check";
+"Уровень" = "Level";
+"Все" = "All";
+"Инфо и выше" = "Info and above";
+"Предупреждения и ошибки" = "Warnings and errors";
+"Только ошибки" = "Errors only";
+"Источник" = "Source";
+"Все источники" = "All sources";
+"Ядро" = "Core";
+"Движок" = "Engine";
+"Поиск" = "Search";
+"Копировать" = "Copy";
+"Сохранить…" = "Save…";
+"Очистить" = "Clear";
+"Нет логов" = "No logs";
