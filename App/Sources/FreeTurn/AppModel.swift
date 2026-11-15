@@ -43,6 +43,11 @@ final class AppModel {
     var loadError: String?
     private var readOnlyFiles: Set<String> = []
 
+    var selectedServerId: String?
+    /// Разобранная ссылка, ждущая подтверждения в панели импорта.
+    var importDraft: ImportDraft?
+    var importError: String?
+
     var installingDaemon = false
     var daemonInstallError: String?
 
@@ -65,6 +70,10 @@ final class AppModel {
         routing = load(RoutingFile.self, "routing.json", routing)
         settings = load(AppSettings.self, "settings.json", settings)
         L10n.language = settings.language
+        // FREETURN_SECTION - открыть приложение сразу на нужном разделе: для проверок интерфейса.
+        if let raw = ProcessInfo.processInfo.environment["FREETURN_SECTION"], let start = AppSection(rawValue: raw) {
+            section = start
+        }
     }
 
     private func load<T: Decodable>(_ type: T.Type, _ name: String, _ fallback: T) -> T {
@@ -132,6 +141,11 @@ final class AppModel {
                 daemonInstallError = String(format: L("Не удалось установить службу: %@"), "\(error)")
             }
         }
+    }
+
+    /// Приватный режим: адреса на экране заменяются точками.
+    func masked(_ address: String) -> String {
+        settings.privacyMode ? "•••••••" : address
     }
 
     var colorScheme: ColorScheme? {

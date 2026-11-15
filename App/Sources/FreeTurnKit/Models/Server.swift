@@ -143,3 +143,34 @@ public struct ServersFile: Codable, Equatable, Sendable {
 
     public var active: Server? { list.first { $0.id == activeId } }
 }
+
+extension ServersFile {
+    public mutating func add(_ server: Server, activate: Bool) {
+        list.append(server)
+        if activate || active == nil { activeId = server.id }
+    }
+
+    public mutating func remove(id: String) {
+        list.removeAll { $0.id == id }
+        if active == nil { activeId = list.first?.id }
+    }
+
+    @discardableResult
+    public mutating func clone(id: String) -> Server? {
+        guard let source = list.first(where: { $0.id == id }) else { return nil }
+        let copy = Server(name: source.name + " (копия)", client: source.client, opts: source.opts)
+        list.append(copy)
+        return copy
+    }
+
+    public mutating func rename(id: String, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let i = list.firstIndex(where: { $0.id == id }) else { return }
+        list[i].name = trimmed
+    }
+
+    public mutating func update(_ server: Server) {
+        guard let i = list.firstIndex(where: { $0.id == server.id }) else { return }
+        list[i] = server
+    }
+}

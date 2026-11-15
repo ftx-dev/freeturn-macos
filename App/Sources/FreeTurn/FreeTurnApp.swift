@@ -15,8 +15,10 @@ struct FreeTurnApp: App {
         Window("FreeTurn", id: "main") {
             RootView()
                 .environment(model)
+                // Ссылка freeturn://, открытая кликом в браузере или мессенджере.
+                .onOpenURL { model.offerImport($0.absoluteString) }
         }
-        .defaultSize(width: 880, height: 620)
+        .defaultSize(width: 1000, height: 680)
 
         MenuBarExtra {
             MenuBarView()
