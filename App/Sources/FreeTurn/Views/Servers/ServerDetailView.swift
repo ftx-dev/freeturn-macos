@@ -31,7 +31,7 @@ struct ServerDetailView: View {
                     .foregroundStyle(.orange)
             }
 
-            Section(L("Подключение")) {
+            Section {
                 TextField(L("Имя сервера"), text: s.name)
                 TextField(L("Адрес сервера"), text: s.client.serverAddress, prompt: Text("1.2.3.4:56000"))
                 Picker(L("Способ"), selection: s.client.provider) {
@@ -40,22 +40,26 @@ struct ServerDetailView: View {
                 }
                 if relay {
                     TextField(L("Ссылка на звонок"), text: s.client.callLink, prompt: Text("https://vk.ru/call/join/…"))
-                    Text(L("Создайте звонок, скопируйте ссылку и не завершайте его."))
-                        .font(.caption).foregroundStyle(.secondary)
                 }
+            } header: {
+                Text(L("Подключение"))
+            } footer: {
+                if relay { footnote(L("Создайте звонок, скопируйте ссылку и не завершайте его.")) }
             }
 
             if relay {
-                Section(L("Производительность")) {
+                Section {
                     Stepper(String(format: L("Потоки: %d"), s.wrappedValue.client.threads), value: s.client.threads, in: 1...24)
                     Stepper(String(format: L("Потоков на аккаунт: %d"), s.wrappedValue.client.streamsPerCred),
                             value: s.client.streamsPerCred, in: 1...24)
-                    Text(L("Рекомендуется 8–12 потоков: больше — выше риск блокировки со стороны сервиса звонков."))
-                        .font(.caption).foregroundStyle(.secondary)
+                } header: {
+                    Text(L("Производительность"))
+                } footer: {
+                    footnote(L("Рекомендуется 8–12 потоков: больше — выше риск блокировки со стороны сервиса звонков."))
                 }
             }
 
-            Section(L("Обфускация")) {
+            Section {
                 Picker(L("Профиль"), selection: s.opts.obfProfile) {
                     ForEach(ObfProfile.values, id: \.self) { Text($0 == ObfProfile.none ? L("Выкл") : $0).tag($0) }
                 }
@@ -65,29 +69,34 @@ struct ServerDetailView: View {
                             .font(.system(.body, design: .monospaced))
                         Button(L("Сгенерировать")) { s.wrappedValue.opts.obfKey = ObfProfile.generateKey() }
                     }
-                    if !ObfProfile.isValidKey(s.wrappedValue.opts.obfKey) {
-                        Text(L("Неверный формат — нужны 64 hex-символа. Ключ должен совпадать с ключом сервера."))
-                            .font(.caption).foregroundStyle(.red)
-                    }
                     Stepper(s.wrappedValue.opts.obfTimingMs == 0
                                 ? L("Пейсинг: выкл")
                                 : String(format: L("Пейсинг: %d мс"), s.wrappedValue.opts.obfTimingMs),
                             value: s.opts.obfTimingMs, in: 0...ObfProfile.timingMax, step: 5)
                 }
+            } header: {
+                Text(L("Обфускация"))
+            } footer: {
+                if s.wrappedValue.opts.obfEnabled, !ObfProfile.isValidKey(s.wrappedValue.opts.obfKey) {
+                    footnote(L("Неверный формат — нужны 64 hex-символа. Ключ должен совпадать с ключом сервера."), color: .red)
+                }
             }
 
-            Section("DNS") {
+            Section {
                 Picker(L("Резолвер ядра"), selection: s.client.dnsMode) {
                     Text(L("Авто")).tag("auto")
                     Text("UDP/53").tag("plain")
                     Text("DoH").tag("doh")
                 }
                 TextField(L("DNS-серверы вручную"), text: s.client.customDns, prompt: Text("1.1.1.1, 8.8.8.8"))
-                if DnsList.hasInvalidTokens(s.wrappedValue.client.customDns) {
-                    Text(L("Некорректные адреса будут пропущены.")).font(.caption).foregroundStyle(.orange)
-                }
                 Toggle(L("DNS текущей сети"), isOn: s.client.useCarrierDns)
                     .disabled(!DnsList.normalize(s.wrappedValue.client.customDns).isEmpty)
+            } header: {
+                Text("DNS")
+            } footer: {
+                if DnsList.hasInvalidTokens(s.wrappedValue.client.customDns) {
+                    footnote(L("Некорректные адреса будут пропущены."), color: .orange)
+                }
             }
 
             if relay {
@@ -135,6 +144,10 @@ struct ServerDetailView: View {
         }
         .formStyle(.grouped)
         .disabled(locked)
+    }
+
+    private func footnote(_ text: String, color: Color = .secondary) -> some View {
+        Text(text).font(.callout).foregroundStyle(color).frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder private func tunnelStatus(_ text: String) -> some View {

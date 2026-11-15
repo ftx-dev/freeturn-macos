@@ -16,27 +16,33 @@ struct SettingsView: View {
                     Text(L("Светлая")).tag("light")
                     Text(L("Тёмная")).tag("dark")
                 }
-                Picker(L("Язык"), selection: $model.settings.language) {
+                Picker(selection: $model.settings.language) {
                     Text(L("Как в системе")).tag("system")
                     Text("Русский").tag("ru")
                     Text("English").tag("en")
+                } label: {
+                    Text(L("Язык"))
+                    if model.settings.language != L10n.language {
+                        Text(L("Язык сменится после перезапуска приложения."))
+                    }
                 }
-                if model.settings.language != L10n.language {
-                    Text(L("Язык сменится после перезапуска приложения.")).font(.caption).foregroundStyle(.secondary)
+                Toggle(isOn: $model.settings.privacyMode) {
+                    Text(L("Приватный режим"))
+                    Text(L("Скрывает адреса, ключи и ссылку на звонок на экране и в логах."))
                 }
-                Toggle(L("Приватный режим"), isOn: $model.settings.privacyMode)
-                Text(L("Скрывает адреса, ключи и ссылку на звонок на экране и в логах."))
-                    .font(.caption).foregroundStyle(.secondary)
             }
 
             Section(L("Подключение")) {
-                Toggle(L("Запускать при входе в систему"), isOn: Binding(get: { launchAtLogin }, set: { setLaunchAtLogin($0) }))
-                if let loginItemError {
-                    Text(loginItemError).font(.caption).foregroundStyle(.red)
+                Toggle(isOn: Binding(get: { launchAtLogin }, set: { setLaunchAtLogin($0) })) {
+                    Text(L("Запускать при входе в систему"))
+                    if let loginItemError {
+                        Text(loginItemError).foregroundStyle(.red)
+                    }
                 }
-                Toggle(L("Подключаться при запуске"), isOn: $model.settings.autoConnect)
-                Text(L("Восстанавливает подключение, если вы не выключали его сами."))
-                    .font(.caption).foregroundStyle(.secondary)
+                Toggle(isOn: $model.settings.autoConnect) {
+                    Text(L("Подключаться при запуске"))
+                    Text(L("Восстанавливает подключение, если вы не выключали его сами."))
+                }
             }
 
             Section("CAPTCHA") {
@@ -45,12 +51,13 @@ struct SettingsView: View {
                     Text(L("В браузере")).tag("browser")
                 }
                 let manual = model.activeServer?.client.manualCaptcha == true
-                Toggle(L("Продвинутое решение CAPTCHA"), isOn: $model.settings.advancedCaptcha)
-                    .disabled(manual)
-                Text(manual
-                    ? L("Недоступно, пока у активного сервера включён ручной ввод капчи.")
-                    : L("Проверку в фоне проходит встроенный браузер. Если не получится, откроется ручная капча."))
-                    .font(.caption).foregroundStyle(.secondary)
+                Toggle(isOn: $model.settings.advancedCaptcha) {
+                    Text(L("Продвинутое решение CAPTCHA"))
+                    Text(manual
+                        ? L("Недоступно, пока у активного сервера включён ручной ввод капчи.")
+                        : L("Проверку в фоне проходит встроенный браузер. Если не получится, откроется ручная капча."))
+                }
+                .disabled(manual)
             }
 
             Section(L("Фоновая служба")) {

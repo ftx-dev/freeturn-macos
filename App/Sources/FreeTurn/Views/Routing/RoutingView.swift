@@ -144,26 +144,26 @@ private struct ProfileEditor: View {
                 }
             }
 
-            List {
-                ForEach(profile.rules) { rule in
-                    RuleRow(rule: rule, locked: profile.builtIn,
-                            onToggle: { on in mutate { p in p.rules[index(of: rule, in: p)].enabled = on } },
-                            onAction: { action in mutate { p in p.rules[index(of: rule, in: p)].action = action } },
-                            onEdit: { editing = rule })
+            if profile.rules.isEmpty {
+                ContentUnavailableView(L("Правил нет"), systemImage: "list.bullet",
+                                       description: Text(L("Весь трафик идёт по режиму профиля.")))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List {
+                    ForEach(profile.rules) { rule in
+                        RuleRow(rule: rule, locked: profile.builtIn,
+                                onToggle: { on in mutate { p in p.rules[index(of: rule, in: p)].enabled = on } },
+                                onAction: { action in mutate { p in p.rules[index(of: rule, in: p)].action = action } },
+                                onEdit: { editing = rule })
+                    }
+                    .onMove { from, to in mutate { $0.rules.move(fromOffsets: from, toOffset: to) } }
+                    .onDelete { offsets in mutate { $0.rules.remove(atOffsets: offsets) } }
+                    .moveDisabled(profile.builtIn)
+                    .deleteDisabled(profile.builtIn)
                 }
-                .onMove { from, to in mutate { $0.rules.move(fromOffsets: from, toOffset: to) } }
-                .onDelete { offsets in mutate { $0.rules.remove(atOffsets: offsets) } }
-                .moveDisabled(profile.builtIn)
-                .deleteDisabled(profile.builtIn)
+                .listStyle(.inset(alternatesRowBackgrounds: true))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
-            .listStyle(.inset(alternatesRowBackgrounds: true))
-            .overlay {
-                if profile.rules.isEmpty {
-                    ContentUnavailableView(L("Правил нет"), systemImage: "list.bullet",
-                                           description: Text(L("Весь трафик идёт по режиму профиля.")))
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 8))
 
             HStack {
                 Button(L("Добавить правило"), systemImage: "plus") {
