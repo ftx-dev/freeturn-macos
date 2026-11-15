@@ -367,3 +367,14 @@ import Testing
     #expect(lines.contains { $0.source == .app && $0.text == "Команда: -peer 1.2.3.4:56000 -provider vk" })
     #expect(rig.controller.launchArgs == "-peer 1.2.3.4:56000 -provider vk")
 }
+
+@MainActor @Test func stateChangesNotify() async {
+    let rig = Rig()
+    var seen: [ConnectionState] = []
+    rig.controller.onStateChange = { seen.append($0) }
+    await rig.connect()
+    await rig.connected()
+    await rig.connected(streams: 3)
+    await rig.controller.disconnect()
+    #expect(seen == [.starting, .connected(streams: 3, total: 12), .stopping, .off])
+}

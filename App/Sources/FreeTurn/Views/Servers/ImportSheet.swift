@@ -28,7 +28,7 @@ struct ImportSheet: View {
             Form {
                 TextField(L("Имя сервера"), text: $name, prompt: Text(draft.suggestedName))
                 LabeledContent(L("Адрес"), value: model.masked(draft.link.peer))
-                LabeledContent(L("Подключение"), value: draft.link.provider == Provider.direct ? L("Напрямую") : L("Через реле"))
+                LabeledContent(L("Подключение"), value: draft.link.provider == Provider.direct ? L("Напрямую") : L("Через релей"))
                 LabeledContent(L("Тип доступа"), value: accessType)
                 if !draft.link.obfProfile.isEmpty, draft.link.obfProfile != ObfProfile.none {
                     LabeledContent(L("Обфускация"), value: draft.link.obfProfile)

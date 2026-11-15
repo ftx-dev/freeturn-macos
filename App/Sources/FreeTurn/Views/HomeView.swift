@@ -87,7 +87,7 @@ struct HomeView: View {
     }
 
     private func serverSummary(_ server: Server) -> String {
-        var parts = [server.name, server.client.provider == Provider.direct ? L("Напрямую") : L("Через реле")]
+        var parts = [server.name, server.client.provider == Provider.direct ? L("Напрямую") : L("Через релей")]
         if server.client.provider != Provider.direct, let streams = streamsText { parts.append(streams) }
         return parts.joined(separator: " · ")
     }
@@ -136,7 +136,11 @@ private struct StatsGrid: View {
             GridRow {
                 StatTile(title: L("Принято"), value: Formatters.bytes(stats.rx, style: style), icon: "tray.and.arrow.down")
                 StatTile(title: L("Отправлено"), value: Formatters.bytes(stats.tx, style: style), icon: "tray.and.arrow.up")
-                Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
+                Button { model.measurePing() } label: {
+                    StatTile(title: L("Пинг"), value: model.pingMs.map { "\($0) \(L("мс"))" } ?? "— \(L("мс"))", icon: "timer")
+                }
+                .buttonStyle(.plain)
+                .help(L("Задержка через туннель. Нажмите, чтобы обновить."))
             }
         }
         .frame(maxWidth: 540)

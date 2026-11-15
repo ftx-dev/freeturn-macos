@@ -30,7 +30,9 @@ public enum ConnectionState: Equatable, Sendable {
 /// До первого connected системная сеть не трогается: капча и подбор реле идут без туннеля.
 @MainActor @Observable
 public final class ConnectionController {
-    public private(set) var state: ConnectionState = .off
+    public private(set) var state: ConnectionState = .off {
+        didSet { if state != oldValue { onStateChange?(state) } }
+    }
     public private(set) var stats = TrafficStats()
     public private(set) var connectedSince: Date?
     public private(set) var captcha: CaptchaRequest?
@@ -40,6 +42,7 @@ public final class ConnectionController {
     public private(set) var activeServerId: String?
 
     @ObservationIgnored public var onLog: ((LogLine) -> Void)?
+    @ObservationIgnored public var onStateChange: ((ConnectionState) -> Void)?
     /// Капча появилась, сменилась или снята (nil).
     @ObservationIgnored public var onCaptchaChange: ((CaptchaRequest?) -> Void)?
 

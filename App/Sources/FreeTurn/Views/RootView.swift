@@ -40,7 +40,7 @@ struct RootView: View {
         case .servers: ServersView()
         case .routing: RoutingView()
         case .logs: LogsView()
-        default: ContentUnavailableView(L("Скоро"), systemImage: model.section.icon)
+        case .settings: SettingsView()
         }
     }
 }

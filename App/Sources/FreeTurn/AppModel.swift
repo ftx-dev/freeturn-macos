@@ -58,6 +58,10 @@ final class AppModel {
 
     var installingDaemon = false
     var daemonInstallError: String?
+    var daemonStatusText = "…"
+    /// Задержка через туннель, мс; nil - не измерена или нет ответа.
+    var pingMs: Int?
+    private var sleepWatcher: SleepWatcher?
 
     /// FREETURN_DATA_DIR - другой каталог данных: для разработки и проверок, чтобы не трогать настоящий.
     static var dataDirectory: URL {
@@ -81,6 +85,11 @@ final class AppModel {
         L10n.language = settings.language
         connection.onCaptchaChange = { [weak self] request in self?.handleCaptcha(request) }
         connection.onLog = { [weak self] line in self?.log(line) }
+        connection.onStateChange = { [weak self] state in self?.stateChanged(state) }
+        sleepWatcher = SleepWatcher { [weak self] slept in self?.connection.systemDidWake(sleptSeconds: slept) }
+        if AutoConnect.shouldConnect(settings: settings, hasActiveServer: activeServer != nil) {
+            Task { await self.connect() }
+        }
         // Метка в файле лога: по ней видно, где приложение перезапускали.
         log(LogLine(level: .info, source: .app, text: "FreeTurn запущен, ядро \(AppInfo.coreVersion), сеть \(SystemNetwork.current()?.ifName ?? "нет")"))
         // FREETURN_DEMO_CAPTCHA - показать окно капчи без подключения: для проверки интерфейса.
@@ -126,6 +135,9 @@ final class AppModel {
     func toggleConnection() {
         Task {
             if connection.state.isActive {
+                // Выключил сам - при следующем запуске не восстанавливаем.
+                settings.wasConnected = false
+                persist()
                 await connection.disconnect()
             } else {
                 await connect()
@@ -140,6 +152,96 @@ final class AppModel {
         let clientId = (try? store.ownClientId()) ?? ""
         await connection.connect(server: server, profile: routing.profile(for: server),
                                  settings: settings, ownClientId: clientId)
+    }
+
+    private func stateChanged(_ state: ConnectionState) {
+        switch state {
+        case .connected:
+            if !settings.wasConnected {
+                settings.wasConnected = true
+                persist()
+                measurePing()
+            }
+        case .failed:
+            // Сбой сам не пройдёт: автоподключение при запуске упёрлось бы в него же.
+            settings.wasConnected = false
+            persist()
+            pingMs = nil
+        case .off:
+            pingMs = nil
+        default:
+            break
+        }
+    }
+
+    func measurePing() {
+        Task { pingMs = await PingMeter.measure() }
+    }
+
+    var redactedLaunchArgs: String {
+        Redactor.redact(connection.launchArgs, secrets: secrets, maskAddresses: settings.privacyMode)
+    }
+
+    func refreshDaemonStatus() async {
+        if connection.state.isActive {
+            // Служба обслуживает одного клиента - наше же подключение.
+            daemonStatusText = L("Работает")
+            return
+        }
+        let client = DaemonClient()
+        defer { client.close() }
+        do {
+            let status = try await client.status()
+            daemonStatusText = status.version == DaemonProtocol.version
+                ? L("Установлена")
+                : L("Установлена другая версия — нужна переустановка")
+        } catch DaemonError.notInstalled {
+            daemonStatusText = L("Не установлена")
+        } catch DaemonError.busy {
+            daemonStatusText = L("Занята другим приложением")
+        } catch {
+            daemonStatusText = L("Не отвечает")
+        }
+    }
+
+    func reinstallDaemon() { runDaemonTask { try await DaemonInstaller.install() } }
+    func uninstallDaemon() { runDaemonTask { try await DaemonInstaller.uninstall() } }
+
+    private func runDaemonTask(_ work: @escaping () async throws -> Void) {
+        guard !installingDaemon else { return }
+        installingDaemon = true
+        daemonInstallError = nil
+        Task {
+            defer { installingDaemon = false }
+            do {
+                try await work()
+            } catch DaemonInstallError.cancelled {
+            } catch let DaemonInstallError.failed(message) {
+                daemonInstallError = message
+            } catch {
+                daemonInstallError = "\(error)"
+            }
+            await refreshDaemonStatus()
+        }
+    }
+
+    /// Удаляет данные приложения. Только свои файлы поимённо: каталог может быть задан снаружи.
+    func resetAll() {
+        Task {
+            await connection.disconnect()
+            let fm = FileManager.default
+            for name in ["servers.json", "routing.json", "settings.json", "client-id", "logs", "core-state"] {
+                try? fm.removeItem(at: store.directory.appendingPathComponent(name))
+            }
+            readOnlyFiles = []
+            loadError = nil
+            servers = ServersFile()
+            routing = RoutingFile.initial()
+            settings = AppSettings()
+            logs.clear()
+            selectedServerId = nil
+            section = .home
+        }
     }
 
     /// Ставит службу и, если получилось, сразу продолжает подключение.

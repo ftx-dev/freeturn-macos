@@ -35,7 +35,7 @@ struct ServerDetailView: View {
                 TextField(L("Имя сервера"), text: s.name)
                 TextField(L("Адрес сервера"), text: s.client.serverAddress, prompt: Text("1.2.3.4:56000"))
                 Picker(L("Способ"), selection: s.client.provider) {
-                    Text(L("Через реле")).tag(Provider.relay)
+                    Text(L("Через релей")).tag(Provider.relay)
                     Text(L("Напрямую")).tag(Provider.direct)
                 }
                 if relay {
