@@ -45,6 +45,12 @@ public final class Store: Sendable {
         return id
     }
 
+    /// Client ID из резервной копии: без него сервер не пустит восстановленные профили (allowlist).
+    public func setOwnClientId(_ id: String) throws {
+        guard id.count == 32, id.allSatisfy(\.isHexDigit) else { throw StoreError.corrupt("client-id") }
+        try write(Data(id.lowercased().utf8), to: "client-id")
+    }
+
     /// Запись через временный файл и rename: обрыв посреди записи не портит прежний файл.
     private func write(_ data: Data, to name: String) throws {
         let fm = FileManager.default

@@ -132,10 +132,9 @@ private final class Connection: @unchecked Sendable {
             }
             waiting.append(continuation)
             lock.unlock()
-            let written = line.withUnsafeBytes { write(fd, $0.baseAddress, $0.count) }
-            // EPIPE - служба уже закрыла свою сторону, но её ответ («busy») может ещё лежать
-            // в буфере: его дочитает поток чтения, он же завершит ожидание по концу потока.
-            if written != line.count, errno != EPIPE { finish() }
+            // Ошибку записи не обрабатываем: если служба уже закрыла свою сторону, её ответ («busy»)
+            // может ещё лежать в буфере - его дочитает поток чтения, он же завершит ожидание по концу потока.
+            _ = line.withUnsafeBytes { write(fd, $0.baseAddress, $0.count) }
         }
     }
 

@@ -65,31 +65,58 @@ struct HomeView: View {
         }
     }
 
+    /// «Сервер · Способ ⌄»: имя - выбор сервера, способ - релей или напрямую у этого сервера.
     @ViewBuilder private var serverLine: some View {
         if let server = model.activeServer {
-            Menu {
-                ForEach(model.servers.list) { item in
-                    Button {
-                        model.setActive(item.id)
-                    } label: {
-                        if item.id == server.id { Label(item.name, systemImage: "checkmark") } else { Text(item.name) }
+            HStack(spacing: 2) {
+                Menu {
+                    ForEach(model.servers.list) { item in
+                        Button {
+                            model.setActive(item.id)
+                        } label: {
+                            if item.id == server.id { Label(item.name, systemImage: "checkmark") } else { Text(item.name) }
+                        }
                     }
+                } label: {
+                    Text(server.name)
                 }
-            } label: {
-                // Одна строка текста: у меню без рамки составная подпись схлопывается до первого элемента.
-                Text(serverSummary(server))
+                .menuIndicator(.hidden)
+                .fixedSize()
+                Text("·")
+                Menu {
+                    ForEach([Provider.relay, Provider.direct], id: \.self) { provider in
+                        Button {
+                            setProvider(provider, of: server)
+                        } label: {
+                            if provider == server.client.provider { Label(providerTitle(provider), systemImage: "checkmark") } else { Text(providerTitle(provider)) }
+                        }
+                    }
+                } label: {
+                    Text(providerSummary(server))
+                }
+                .fixedSize()
             }
             .menuStyle(.borderlessButton)
-            .fixedSize()
             .disabled(state.isActive)
             .foregroundStyle(.secondary)
         }
     }
 
-    private func serverSummary(_ server: Server) -> String {
-        var parts = [server.name, server.client.provider == Provider.direct ? L("Напрямую") : L("Через релей")]
-        if server.client.provider != Provider.direct, let streams = streamsText { parts.append(streams) }
-        return parts.joined(separator: " · ")
+    private func providerTitle(_ provider: String) -> String {
+        provider == Provider.direct ? L("Напрямую") : L("Через релей")
+    }
+
+    private func providerSummary(_ server: Server) -> String {
+        var text = providerTitle(server.client.provider)
+        if server.client.provider != Provider.direct, let streams = streamsText { text += " · " + streams }
+        return text
+    }
+
+    private func setProvider(_ provider: String, of server: Server) {
+        var edited = server
+        edited.client.provider = provider
+        model.servers.update(edited)
+        model.persist()
     }
 
     private var streamsText: String? {

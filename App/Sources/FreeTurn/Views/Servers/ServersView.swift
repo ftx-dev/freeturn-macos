@@ -45,6 +45,7 @@ struct ServersView: View {
                     Button(L("QR-код с экрана"), systemImage: "qrcode.viewfinder") { model.importQRFromScreen() }
                     Divider()
                     Button(L("Ручная настройка"), systemImage: "square.and.pencil") { model.addManualServer() }
+                    Button(L("Восстановить из резервной копии…"), systemImage: "clock.arrow.circlepath") { model.section = .settings }
                 } label: {
                     Label(L("Добавить сервер"), systemImage: "plus")
                 }
@@ -74,6 +75,8 @@ struct ServersView: View {
         Button(L("Сделать активным")) { model.setActive(server.id) }
             .disabled(busy || server.id == model.servers.activeId)
         Button(L("Переименовать")) { newName = server.name; renaming = server }
+        Button(L("Поделиться…")) { model.sharing = server }
+            .disabled(server.client.serverAddress.isEmpty)
         Button(L("Клонировать")) { model.servers.clone(id: server.id); model.persist() }
         Divider()
         Button(L("Удалить"), role: .destructive) { deleting = server }

@@ -12,7 +12,7 @@ struct DaemonInstallView: View {
                 .font(.headline)
             Text(outdated
                 ? L("Установленная служба от другой версии приложения. Её нужно обновить — понадобится пароль администратора.")
-                : L("Чтобы поднять системный туннель, FreeTurn один раз ставит небольшую службу. Понадобится пароль администратора."))
+                : L("Чтобы поднять системный туннель, FreeTurnX один раз ставит небольшую службу. Понадобится пароль администратора."))
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

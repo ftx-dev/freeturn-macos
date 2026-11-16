@@ -4,7 +4,7 @@ import SwiftUI
 import FreeTurnKit
 
 enum AppSection: String, CaseIterable, Identifiable {
-    case home, servers, routing, logs, settings
+    case home, servers, routing, logs, settings, about
     var id: String { rawValue }
 
     @MainActor var title: String {
@@ -14,6 +14,7 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .routing: L("Маршруты")
         case .logs: L("Логи")
         case .settings: L("Настройки")
+        case .about: L("О проекте")
         }
     }
 
@@ -24,6 +25,7 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .routing: "arrow.triangle.branch"
         case .logs: "text.alignleft"
         case .settings: "gearshape"
+        case .about: "info.circle"
         }
     }
 }
@@ -31,6 +33,8 @@ enum AppSection: String, CaseIterable, Identifiable {
 /// Состояние приложения: данные на диске и текущее подключение.
 @MainActor @Observable
 final class AppModel {
+    static let telegramURL = URL(string: "https://t.me/+ZVdbpZB0w_Q1MTdi")!
+
     let store: Store
     let connection: ConnectionController
     let logs = LogStore()
@@ -59,6 +63,11 @@ final class AppModel {
     private let captchaWindow = CaptchaWindowController()
     private let autoCaptcha = AutoCaptchaHost()
 
+    /// Разовое предложение подписаться на Telegram-канал - после первого удачного подключения.
+    var offerTelegram = false
+    var sharing: Server?
+    var backupMessage: String?
+
     var installingDaemon = false
     var daemonInstallError: String?
     var daemonStatusText = "…"
@@ -86,6 +95,9 @@ final class AppModel {
         routing = load(RoutingFile.self, "routing.json", routing).normalized()
         settings = load(AppSettings.self, "settings.json", settings)
         L10n.language = settings.language
+        // NSApp появляется только после запуска приложения, а модель создаётся раньше.
+        let icon = settings.appIcon
+        DispatchQueue.main.async { MainActor.assumeIsolated { AppIcons.apply(icon) } }
         connection.onCaptchaChange = { [weak self] request in self?.handleCaptcha(request) }
         connection.onLog = { [weak self] line in self?.log(line) }
         connection.onStateChange = { [weak self] state in self?.stateChanged(state) }
@@ -100,10 +112,14 @@ final class AppModel {
             Task { await self.connect() }
         }
         // Метка в файле лога: по ней видно, где приложение перезапускали.
-        log(LogLine(level: .info, source: .app, text: "FreeTurn запущен, ядро \(AppInfo.coreVersion), сеть \(SystemNetwork.current()?.ifName ?? "нет")"))
+        log(LogLine(level: .info, source: .app, text: "FreeTurnX запущен, ядро \(AppInfo.coreVersion), сеть \(SystemNetwork.current()?.ifName ?? "нет")"))
         // FREETURN_DEMO_CAPTCHA - показать окно капчи без подключения: для проверки интерфейса.
         if ProcessInfo.processInfo.environment["FREETURN_DEMO_CAPTCHA"] != nil {
             DispatchQueue.main.async { self.handleCaptcha(CaptchaRequest(url: "http://localhost:8765/", manual: true)) }
+        }
+        // FREETURN_DEMO_SHARE - сразу открыть «Поделиться» для активного сервера: для проверки интерфейса.
+        if ProcessInfo.processInfo.environment["FREETURN_DEMO_SHARE"] != nil {
+            DispatchQueue.main.async { self.sharing = self.activeServer }
         }
         // FREETURN_SECTION - открыть приложение сразу на нужном разделе: для проверок интерфейса.
         if let raw = ProcessInfo.processInfo.environment["FREETURN_SECTION"], let start = AppSection(rawValue: raw) {
@@ -170,6 +186,12 @@ final class AppModel {
                 settings.wasConnected = true
                 persist()
                 measurePing()
+            }
+            // Как на Android: один раз, после первого удачного подключения.
+            if !settings.telegramPromptShown {
+                settings.telegramPromptShown = true
+                persist()
+                offerTelegram = true
             }
         case .failed:
             // Сбой сам не пройдёт: автоподключение при запуске упёрлось бы в него же.

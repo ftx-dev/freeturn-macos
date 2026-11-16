@@ -12,7 +12,7 @@ struct FreeTurnApp: App {
     @State private var model = AppModel()
 
     var body: some Scene {
-        Window("FreeTurn", id: "main") {
+        Window("FreeTurnX", id: "main") {
             RootView()
                 .environment(model)
                 // Ссылка freeturn://, открытая кликом в браузере или мессенджере.

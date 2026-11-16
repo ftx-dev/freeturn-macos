@@ -32,7 +32,7 @@ struct MenuBarView: View {
             .disabled(state.isActive)
         }
         Divider()
-        Button(L("Открыть FreeTurn")) {
+        Button(L("Открыть FreeTurnX")) {
             openWindow(id: "main")
             NSApp.activate(ignoringOtherApps: true)
         }
@@ -47,7 +47,7 @@ struct MenuBarView: View {
 
     private func statusLine(_ state: ConnectionState) -> String {
         switch state {
-        case .off: "FreeTurn"
+        case .off: "FreeTurnX"
         case .starting: L("Запуск…")
         case .connecting: L("Подключение…")
         case .captcha: L("Проверка CAPTCHA")

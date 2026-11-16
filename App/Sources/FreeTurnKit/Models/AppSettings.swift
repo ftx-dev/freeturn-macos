@@ -11,6 +11,10 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var captchaTarget = "window"
     /// Проверять новые версии в GitHub Releases при запуске.
     public var checkUpdates = true
+    /// Иконка приложения: standard - синяя, black - чёрная OLED, x - чёрная с буквой X.
+    public var appIcon = "standard"
+    /// Разовое предложение подписаться на Telegram-канал уже показано.
+    public var telegramPromptShown = false
     /// Прошлую сессию пользователь не выключал сам - основание для автоподключения.
     public var wasConnected = false
 
@@ -30,6 +34,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
         tunStack = ["system", "gvisor", "mixed"].contains(stack) ? stack : d.tunStack
         captchaTarget = c.value(.captchaTarget, d.captchaTarget) == "browser" ? "browser" : "window"
         checkUpdates = c.value(.checkUpdates, d.checkUpdates)
+        let icon = c.value(.appIcon, d.appIcon)
+        appIcon = ["standard", "black", "x"].contains(icon) ? icon : d.appIcon
+        telegramPromptShown = c.value(.telegramPromptShown, d.telegramPromptShown)
         wasConnected = c.value(.wasConnected, d.wasConnected)
     }
 }

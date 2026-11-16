@@ -26,6 +26,13 @@ struct RootView: View {
         }
         .frame(minWidth: 920, minHeight: 560)
         .sheet(item: $model.importDraft) { ImportSheet(draft: $0) }
+        .sheet(item: $model.sharing) { ShareSheet(server: $0) }
+        .alert(L("Следите за обновлениями"), isPresented: $model.offerTelegram) {
+            Button(L("Подписаться")) { NSWorkspace.shared.open(AppModel.telegramURL) }
+            Button(L("Не сейчас"), role: .cancel) {}
+        } message: {
+            Text(L("Подпишитесь на Telegram-канал, чтобы первыми узнавать о новых версиях."))
+        }
         .alert(String(format: L("Доступна версия %@"), model.offerUpdate?.version ?? ""),
                isPresented: Binding(get: { model.offerUpdate != nil }, set: { if !$0 { model.offerUpdate = nil } }),
                presenting: model.offerUpdate) { update in
@@ -49,6 +56,7 @@ struct RootView: View {
         case .routing: RoutingView()
         case .logs: LogsView()
         case .settings: SettingsView()
+        case .about: AboutView()
         }
     }
 }

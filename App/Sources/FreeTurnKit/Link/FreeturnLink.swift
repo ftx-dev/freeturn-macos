@@ -73,3 +73,49 @@ public struct FreeturnLink: Equatable, Sendable {
         return link
     }
 }
+
+extension FreeturnLink {
+    /// Ссылка `freeturn://base64url(JSON)`. JSON собирается вручную ради порядка ключей,
+    /// как у Go json.Marshal и Android: ссылки всех клиентов совпадают байт в байт.
+    public func encode() -> String {
+        var fields: [(String, String)] = [("v", "\(Self.version)"), ("provider", quote(provider)), ("peer", quote(peer))]
+        if !transport.isEmpty { fields.append(("transport", quote(transport))) }
+        if !mode.isEmpty { fields.append(("mode", quote(mode))) }
+        if bond { fields.append(("bond", "true")) }
+        if !obfProfile.isEmpty, obfProfile != ObfProfile.none {
+            fields.append(("obf", quote(obfProfile)))
+            fields.append(("key", quote(obfKey)))
+            if obfTimingMs != 0 { fields.append(("timing", "\(obfTimingMs)")) }
+        }
+        if n != 0 { fields.append(("n", "\(n)")) }
+        if streamsPerCred != 0 { fields.append(("spc", "\(streamsPerCred)")) }
+        if !clientId.isEmpty { fields.append(("cid", quote(clientId))) }
+        if !dnsMode.isEmpty { fields.append(("dns", quote(dnsMode))) }
+        if !dnsServers.isEmpty { fields.append(("dnss", quote(dnsServers))) }
+        if manualCaptcha { fields.append(("mcap", "true")) }
+        if !name.isEmpty { fields.append(("name", quote(name))) }
+        if !callLink.isEmpty { fields.append(("vk", quote(callLink))) }
+        if !wgConf.isEmpty { fields.append(("wg", quote(wgConf))) }
+        let json = "{" + fields.map { "\"\($0.0)\":\($0.1)" }.joined(separator: ",") + "}"
+        let b64 = Data(json.utf8).base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
+        return Self.scheme + b64
+    }
+
+    /// Минимальное JSON-экранирование, как у Android: кавычки, обратная косая, управляющие символы.
+    private func quote(_ s: String) -> String {
+        var out = "\""
+        for ch in s.unicodeScalars {
+            switch ch {
+            case "\"": out += "\\\""
+            case "\\": out += "\\\\"
+            case "\n": out += "\\n"
+            case "\r": out += "\\r"
+            case "\t": out += "\\t"
+            case _ where ch.value < 0x20: out += String(format: "\\u%04x", ch.value)
+            default: out.unicodeScalars.append(ch)
+            }
+        }
+        return out + "\""
+    }
+}
