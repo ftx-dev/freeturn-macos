@@ -19,12 +19,15 @@ struct FreeTurnApp: App {
                 .onOpenURL { model.offerImport($0.absoluteString) }
         }
         .defaultSize(width: 1000, height: 680)
+        // Размер окна задаёт содержимое: обычный режим растягивается, компактный - ровно 400×600.
+        .windowResizability(.contentSize)
 
         MenuBarExtra {
             MenuBarView()
                 .environment(model)
         } label: {
-            Image(systemName: MenuBarView.icon(for: model.connection.state))
+            Image(nsImage: MenuBarIcon.image(for: model.connection.state))
         }
+        .menuBarExtraStyle(.window)
     }
 }

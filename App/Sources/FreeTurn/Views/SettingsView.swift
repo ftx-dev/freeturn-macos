@@ -58,6 +58,17 @@ struct SettingsView: View {
                 }
             }
 
+            Section(L("Окно")) {
+                Toggle(isOn: $model.settings.menuBarOnly) {
+                    Text(L("Только в строке меню"))
+                    Text(L("Без значка в Dock: подключение, серверы и скорость — в панели по значку в строке меню, как у WireGuard."))
+                }
+                .onChange(of: model.settings.menuBarOnly) { _, on in AppModel.applyDockPolicy(menuBarOnly: on) }
+                Toggle(isOn: $model.settings.compactWindow) {
+                    Text(L("Компактное окно (эксперимент)"))
+                    Text(L("Окно 400×600 с главным экраном; остальные разделы открываются в обычном окне."))
+                }
+            }
             Section(L("Подключение")) {
                 Toggle(isOn: Binding(get: { launchAtLogin }, set: { setLaunchAtLogin($0) })) {
                     Text(L("Запускать при входе в систему"))

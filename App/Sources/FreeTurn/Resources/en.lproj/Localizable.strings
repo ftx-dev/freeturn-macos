@@ -14,7 +14,6 @@
 "Нет серверов" = "No servers";
 "Добавьте сервер, чтобы подключиться" = "Add a server to connect";
 "Добавить сервер" = "Add server";
-"Сервер" = "Server";
 "потоков" = "streams";
 "Загрузка" = "Download";
 "Отдача" = "Upload";
@@ -287,3 +286,16 @@
 "Экспортировать" = "Export";
 "Экспортировать…" = "Export…";
 "Ядро: free-turn-proxy, туннель: Amnezia Box." = "Core: free-turn-proxy, tunnel: Amnezia Box.";
+"Окно" = "Window";
+"Только в строке меню" = "Menu bar only";
+"Без значка в Dock: подключение, серверы и скорость — в панели по значку в строке меню, как у WireGuard." = "No Dock icon: connection, servers and speed live in the menu bar panel, like WireGuard.";
+"Компактное окно (эксперимент)" = "Compact window (experimental)";
+"Окно 400×600 с главным экраном; остальные разделы открываются в обычном окне." = "A 400×600 window with the home screen; other sections open in the regular window.";
+"Обычное окно" = "Regular window";
+"Компактное окно" = "Compact window";
+"Развернуть" = "Expand";
+"Отключено" = "Disconnected";
+"Серверы" = "Servers";
+"Добавить сервер…" = "Add server…";
+"напрямую" = "direct";
+"через релей" = "via relay";

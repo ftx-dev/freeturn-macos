@@ -13,6 +13,10 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var checkUpdates = true
     /// Иконка приложения: standard (Classic) - синяя, black - чёрная OLED, x - чёрная с буквой X (по умолчанию).
     public var appIcon = "x"
+    /// Экспериментальное компактное окно 400×600: одна колонка с главным экраном.
+    public var compactWindow = false
+    /// Только в строке меню: без значка в Dock, управление - из панели в строке меню (как у WireGuard).
+    public var menuBarOnly = false
     /// Разовое предложение подписаться на Telegram-канал уже показано.
     public var telegramPromptShown = false
     /// Прошлую сессию пользователь не выключал сам - основание для автоподключения.
@@ -36,6 +40,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         checkUpdates = c.value(.checkUpdates, d.checkUpdates)
         let icon = c.value(.appIcon, d.appIcon)
         appIcon = ["standard", "black", "x"].contains(icon) ? icon : d.appIcon
+        compactWindow = c.value(.compactWindow, d.compactWindow)
+        menuBarOnly = c.value(.menuBarOnly, d.menuBarOnly)
         telegramPromptShown = c.value(.telegramPromptShown, d.telegramPromptShown)
         wasConnected = c.value(.wasConnected, d.wasConnected)
     }

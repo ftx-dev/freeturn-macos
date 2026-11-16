@@ -2,11 +2,54 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dismissWindow) private var dismissWindow
     @State private var visited: Set<AppSection> = []
+    /// Окно при запуске уже закрывали (режим «только в строке меню») - второй раз не закрываем.
+    @MainActor private static var launchHandled = false
 
     var body: some View {
         @Bindable var model = model
-        NavigationSplitView {
+        Group {
+            if model.settings.compactWindow {
+                CompactView().frame(width: 400, height: 600)
+            } else {
+                split.frame(minWidth: 920, minHeight: 560)
+            }
+        }
+        .onAppear {
+            // Только в строке меню: при запуске окна нет, как у WireGuard. Открыть - из панели.
+            if !Self.launchHandled {
+                Self.launchHandled = true
+                if model.settings.menuBarOnly { dismissWindow(id: "main") }
+            }
+        }
+        .sheet(item: $model.importDraft) { ImportSheet(draft: $0) }
+        .sheet(item: $model.sharing) { ShareSheet(server: $0) }
+        .alert(L("Следите за обновлениями"), isPresented: $model.offerTelegram) {
+            Button(L("Подписаться")) { NSWorkspace.shared.open(AppModel.telegramURL) }
+            Button(L("Не сейчас"), role: .cancel) {}
+        } message: {
+            Text(L("Подпишитесь на Telegram-канал, чтобы первыми узнавать о новых версиях."))
+        }
+        .alert(String(format: L("Доступна версия %@"), model.offerUpdate?.version ?? ""),
+               isPresented: Binding(get: { model.offerUpdate != nil }, set: { if !$0 { model.offerUpdate = nil } }),
+               presenting: model.offerUpdate) { update in
+            Button(L("Обновить")) { model.installUpdate(update) }
+            Button(L("Позже"), role: .cancel) {}
+        } message: { update in
+            Text(update.notes.isEmpty ? L("Приложение перезапустится. VPN на время обновления отключится.") : update.notes)
+        }
+        .alert(L("Ошибка импорта"), isPresented: Binding(get: { model.importError != nil }, set: { if !$0 { model.importError = nil } })) {
+            Button(L("Понятно"), role: .cancel) {}
+        } message: {
+            Text(model.importError ?? "")
+        }
+        .preferredColorScheme(model.colorScheme)
+    }
+
+    private var split: some View {
+        @Bindable var model = model
+        return NavigationSplitView {
             List(AppSection.allCases, selection: $model.section) { section in
                 Label(section.title, systemImage: section.icon).tag(section)
             }
@@ -49,29 +92,6 @@ struct RootView: View {
             }
             .navigationTitle(model.section.title)
         }
-        .frame(minWidth: 920, minHeight: 560)
-        .sheet(item: $model.importDraft) { ImportSheet(draft: $0) }
-        .sheet(item: $model.sharing) { ShareSheet(server: $0) }
-        .alert(L("Следите за обновлениями"), isPresented: $model.offerTelegram) {
-            Button(L("Подписаться")) { NSWorkspace.shared.open(AppModel.telegramURL) }
-            Button(L("Не сейчас"), role: .cancel) {}
-        } message: {
-            Text(L("Подпишитесь на Telegram-канал, чтобы первыми узнавать о новых версиях."))
-        }
-        .alert(String(format: L("Доступна версия %@"), model.offerUpdate?.version ?? ""),
-               isPresented: Binding(get: { model.offerUpdate != nil }, set: { if !$0 { model.offerUpdate = nil } }),
-               presenting: model.offerUpdate) { update in
-            Button(L("Обновить")) { model.installUpdate(update) }
-            Button(L("Позже"), role: .cancel) {}
-        } message: { update in
-            Text(update.notes.isEmpty ? L("Приложение перезапустится. VPN на время обновления отключится.") : update.notes)
-        }
-        .alert(L("Ошибка импорта"), isPresented: Binding(get: { model.importError != nil }, set: { if !$0 { model.importError = nil } })) {
-            Button(L("Понятно"), role: .cancel) {}
-        } message: {
-            Text(model.importError ?? "")
-        }
-        .preferredColorScheme(model.colorScheme)
     }
 
     @ViewBuilder private func page(_ section: AppSection) -> some View {
@@ -86,3 +106,46 @@ struct RootView: View {
     }
 }
 
+/// Экспериментальный компактный режим: окно 400×600 с главным экраном и быстрыми переходами.
+/// Разделы целиком открываются в обычном окне - кнопки внизу разворачивают его на нужном разделе.
+struct CompactView: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HomeView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Divider()
+            HStack(spacing: 0) {
+                ForEach([AppSection.servers, .routing, .logs, .settings]) { section in
+                    Button { expand(to: section) } label: {
+                        VStack(spacing: 3) {
+                            Image(systemName: section.icon).font(.system(size: 15))
+                            Text(section.title).font(.caption2)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.vertical, 8)
+        }
+        .navigationTitle("FreeTurnX")
+        .toolbar {
+            ToolbarItem {
+                Button { expand(to: .home) } label: {
+                    Label(L("Развернуть"), systemImage: "arrow.up.left.and.arrow.down.right")
+                }
+                .help(L("Обычное окно"))
+            }
+        }
+    }
+
+    private func expand(to section: AppSection) {
+        model.section = section
+        model.settings.compactWindow = false
+        model.persist()
+    }
+}

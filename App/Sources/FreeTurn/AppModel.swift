@@ -97,7 +97,13 @@ final class AppModel {
         L10n.language = settings.language
         // NSApp появляется только после запуска приложения, а модель создаётся раньше.
         let icon = settings.appIcon
-        DispatchQueue.main.async { MainActor.assumeIsolated { AppIcons.apply(icon) } }
+        let menuBarOnly = settings.menuBarOnly
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated {
+                AppIcons.apply(icon)
+                AppModel.applyDockPolicy(menuBarOnly: menuBarOnly)
+            }
+        }
         connection.onCaptchaChange = { [weak self] request in self?.handleCaptcha(request) }
         connection.onLog = { [weak self] line in self?.log(line) }
         connection.onStateChange = { [weak self] state in self?.stateChanged(state) }
@@ -137,6 +143,12 @@ final class AppModel {
         }
     }
 
+    /// Без значка в Dock приложение живёт в строке меню; окно при этом открывается как обычно.
+    @MainActor static func applyDockPolicy(menuBarOnly: Bool) {
+        NSApp.setActivationPolicy(menuBarOnly ? .accessory : .regular)
+        if !menuBarOnly { NSApp.activate(ignoringOtherApps: true) }
+    }
+
     func persist() {
         save(servers, "servers.json")
         save(routing, "routing.json")
@@ -155,6 +167,18 @@ final class AppModel {
         guard !connection.state.isActive else { return }
         servers.activeId = id
         persist()
+    }
+
+    /// Переключиться на другой сервер, как туннели у WireGuard: если подключены - переподключиться к нему.
+    func switchServer(to id: String) {
+        guard id != servers.activeId else { return }
+        Task {
+            let wasActive = connection.state.isActive
+            if wasActive { await connection.disconnect() }
+            servers.activeId = id
+            persist()
+            if wasActive { await connect() }
+        }
     }
 
     func toggleConnection() {
