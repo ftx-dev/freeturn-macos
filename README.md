@@ -1,6 +1,6 @@
 # FreeTurn для macOS
 
-Нативный клиент [free-turn-proxy](https://github.com/hackdiaz-dev/free-turn-proxy) для macOS: системный VPN (WireGuard / AmneziaWG) через TURN-реле звонка или напрямую, с маршрутизацией по приложениям, доменам и подсетям.
+Нативный клиент [free-turn-proxy](https://github.com/hackdiaz-dev/free-turn-proxy) для macOS: системный VPN (WireGuard / AmneziaWG) через TURN-релей или напрямую, с маршрутизацией по приложениям, доменам и подсетям.
 
 ## Скриншоты
 
