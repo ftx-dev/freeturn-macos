@@ -27,6 +27,10 @@ struct MenuBarView: View {
             }
             Divider()
             servers
+            if model.activeServer != nil {
+                Divider()
+                modeSection
+            }
             Divider()
             VStack(spacing: 0) {
                 MenuRow(L("Открыть FreeTurnX"), systemImage: "macwindow") { openMain() }
@@ -104,18 +108,44 @@ struct MenuBarView: View {
                     model.switchServer(to: server.id)
                 }
             }
-            if let server = model.activeServer {
-                Picker("", selection: Binding(get: { server.client.provider }, set: { setProvider($0, of: server) })) {
-                    Text(L("Через релей")).tag(Provider.relay)
-                    Text(L("Напрямую")).tag(Provider.direct)
-                }
-                .pickerStyle(.segmented).labelsHidden()
-                .frame(maxWidth: .infinity)
-                .disabled(state.isActive)
-                .padding(.horizontal, 14).padding(.vertical, 8)
-            }
         }
-        .padding(.bottom, 2)
+        .padding(.bottom, 6)
+    }
+
+    /// Режим подключения выбранного сервера: две равные половины на всю ширину панели.
+    @ViewBuilder private var modeSection: some View {
+        if let server = model.activeServer {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(L("Режим")).font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    if state.isActive {
+                        Text(L("меняется после отключения")).font(.caption2).foregroundStyle(.tertiary)
+                    }
+                }
+                HStack(spacing: 2) {
+                    ForEach([Provider.relay, Provider.direct], id: \.self) { provider in
+                        let selected = server.client.provider == provider
+                        Button { setProvider(provider, of: server) } label: {
+                            Label(provider == Provider.direct ? L("Напрямую") : L("Через релей"),
+                                  systemImage: provider == Provider.direct ? "arrow.right" : "point.3.connected.trianglepath.dotted")
+                                .font(.callout.weight(selected ? .semibold : .regular))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 6)
+                                .foregroundStyle(selected ? Color.white : .primary)
+                                .background(selected ? Color.accentColor : .clear, in: RoundedRectangle(cornerRadius: 6))
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(2)
+                .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
+                .disabled(state.isActive)
+                .opacity(state.isActive ? 0.55 : 1)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 10)
+        }
     }
 
     private func providerTitle(_ provider: String) -> String {

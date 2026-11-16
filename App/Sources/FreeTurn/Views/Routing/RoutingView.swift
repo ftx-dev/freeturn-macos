@@ -15,39 +15,15 @@ extension AppModel {
 
 struct RoutingView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.compactLayout) private var compact
     @State private var selectedId: String?
     @State private var transferError: String?
+    /// Узкая раскладка: профиль открыт отдельным экраном.
+    @State private var opened = false
 
     var body: some View {
-        HStack(spacing: 0) {
-            List(selection: $selectedId) {
-                ForEach(model.routing.profiles) { profile in
-                    HStack {
-                        Image(systemName: profile.builtIn ? "lock" : "arrow.triangle.branch")
-                            .foregroundStyle(.secondary).frame(width: 20)
-                        Text(model.displayName(profile))
-                        Spacer()
-                        if profile.id == model.routing.sharedProfileId {
-                            Text(L("общий")).font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(.vertical, 3)
-                    .tag(profile.id)
-                    .listRowSeparator(.hidden)
-                }
-            }
-            .frame(width: 250)
-
-            Divider()
-
-            Group {
-                if let id = selectedId, model.routing.profiles.contains(where: { $0.id == id }) {
-                    ProfileEditor(profileId: id, selectedId: $selectedId, transferError: $transferError)
-                } else {
-                    ContentUnavailableView(L("Выберите профиль"), systemImage: "arrow.triangle.branch")
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        Group {
+            if compact { compactBody } else { wideBody }
         }
         .toolbar {
             // Разделы живут скрытыми (см. RootView): кнопки панели - только у видимого.
@@ -75,6 +51,70 @@ struct RoutingView: View {
         }
     }
 
+    /// Узкая раскладка: список профилей на всю ширину, редактор - отдельным экраном.
+    @ViewBuilder private var compactBody: some View {
+        if opened, let id = selectedId, let profile = model.routing.profiles.first(where: { $0.id == id }) {
+            VStack(spacing: 0) {
+                CompactBackBar(title: model.displayName(profile)) { opened = false }
+                ProfileEditor(profileId: id, selectedId: $selectedId, transferError: $transferError)
+            }
+        } else {
+            List {
+                ForEach(model.routing.profiles) { profile in
+                    Button {
+                        selectedId = profile.id
+                        opened = true
+                    } label: {
+                        HStack {
+                            profileRow(profile)
+                            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .listRowSeparator(.hidden)
+                }
+            }
+        }
+    }
+
+    private func profileRow(_ profile: RoutingProfile) -> some View {
+        HStack {
+            Image(systemName: profile.builtIn ? "lock" : "arrow.triangle.branch")
+                .foregroundStyle(.secondary).frame(width: 20)
+            Text(model.displayName(profile))
+            Spacer()
+            if profile.id == model.routing.sharedProfileId {
+                Text(L("общий")).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 3)
+    }
+
+    private var wideBody: some View {
+        HStack(spacing: 0) {
+            List(selection: $selectedId) {
+                ForEach(model.routing.profiles) { profile in
+                    profileRow(profile)
+                    .tag(profile.id)
+                    .listRowSeparator(.hidden)
+                }
+            }
+            .frame(width: 250)
+
+            Divider()
+
+            Group {
+                if let id = selectedId, model.routing.profiles.contains(where: { $0.id == id }) {
+                    ProfileEditor(profileId: id, selectedId: $selectedId, transferError: $transferError)
+                } else {
+                    ContentUnavailableView(L("Выберите профиль"), systemImage: "arrow.triangle.branch")
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
     private func importProfile() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.json]
@@ -94,6 +134,7 @@ struct RoutingView: View {
 
 private struct ProfileEditor: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.compactLayout) private var compact
     let profileId: String
     @Binding var selectedId: String?
     @Binding var transferError: String?
@@ -122,6 +163,36 @@ private struct ProfileEditor: View {
                     .textFieldStyle(.roundedBorder)
             }
 
+            if compact {
+                // Узкая раскладка: режим - списком, действия с профилем - в одном меню.
+                HStack {
+                    Picker(L("Режим"), selection: Binding(get: { profile.defaultAction }, set: { action in mutate { $0.defaultAction = action } })) {
+                        Text(L("Всё через VPN, кроме выбранного")).tag(RouteAction.vpn)
+                        Text(L("Только выбранное через VPN")).tag(RouteAction.direct)
+                    }
+                    .labelsHidden()
+                    .disabled(profile.builtIn)
+                    Menu {
+                        Button(L("Сделать общим")) { model.routing.sharedProfileId = profileId; model.persist() }
+                            .disabled(model.routing.sharedProfileId == profileId)
+                        Button(L("Клонировать")) {
+                            if let copy = model.routing.clone(id: profileId) { model.persist(); selectedId = copy.id }
+                        }
+                        Button(L("Экспорт…")) { export(profile) }
+                        if !profile.builtIn {
+                            Divider()
+                            Button(L("Удалить"), role: .destructive) {
+                                model.routing.remove(id: profileId)
+                                model.persist()
+                                selectedId = model.routing.sharedProfileId
+                            }
+                        }
+                    } label: {
+                        Label(L("Действия"), systemImage: "ellipsis.circle")
+                    }
+                    .fixedSize()
+                }
+            } else {
             Picker(L("Режим"), selection: Binding(get: { profile.defaultAction }, set: { action in mutate { $0.defaultAction = action } })) {
                 Text(L("Всё через VPN, кроме выбранного")).tag(RouteAction.vpn)
                 Text(L("Только выбранное через VPN")).tag(RouteAction.direct)
@@ -146,6 +217,7 @@ private struct ProfileEditor: View {
                         selectedId = model.routing.sharedProfileId
                     }
                 }
+            }
             }
 
             if profile.rules.isEmpty {
@@ -175,7 +247,7 @@ private struct ProfileEditor: View {
                 }
                 .disabled(profile.builtIn)
                 Spacer()
-                Picker(L("Тип туннеля"), selection: $model.settings.tunStack) {
+                Picker(compact ? L("Стек") : L("Тип туннеля"), selection: $model.settings.tunStack) {
                     Text("mixed").tag("mixed")
                     Text("system").tag("system")
                     Text("gvisor").tag("gvisor")

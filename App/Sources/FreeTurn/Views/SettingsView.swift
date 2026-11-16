@@ -65,8 +65,8 @@ struct SettingsView: View {
                 }
                 .onChange(of: model.settings.menuBarOnly) { _, on in AppModel.applyDockPolicy(menuBarOnly: on) }
                 Toggle(isOn: $model.settings.compactWindow) {
-                    Text(L("Компактное окно (эксперимент)"))
-                    Text(L("Окно 400×600 с главным экраном; остальные разделы открываются в обычном окне."))
+                    Text(L("Компактное окно"))
+                    Text(L("Окно 400×600: все разделы в одну колонку, вкладки внизу."))
                 }
             }
             Section(L("Подключение")) {

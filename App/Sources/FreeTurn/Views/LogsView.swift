@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct LogsView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.compactLayout) private var compact
     @State private var minLevel: LogLevel = .debug
     @State private var source: LogSource?
     @State private var query = ""
@@ -24,33 +25,54 @@ struct LogsView: View {
         }
     }
 
+    private var levelPicker: some View {
+        Picker(L("Уровень"), selection: $minLevel) {
+            Text(L("Все")).tag(LogLevel.debug)
+            Text(L("Инфо и выше")).tag(LogLevel.info)
+            Text(L("Предупреждения и ошибки")).tag(LogLevel.warn)
+            Text(L("Только ошибки")).tag(LogLevel.error)
+        }
+        .labelsHidden()
+    }
+
+    private var sourcePicker: some View {
+        Picker(L("Источник"), selection: $source) {
+            Text(L("Все источники")).tag(LogSource?.none)
+            Text(L("Ядро")).tag(LogSource?.some(.core))
+            Text(L("Движок")).tag(LogSource?.some(.engine))
+            Text(L("Приложение")).tag(LogSource?.some(.app))
+        }
+        .labelsHidden()
+    }
+
+    private var searchField: some View {
+        TextField(L("Поиск"), text: $query).textFieldStyle(.roundedBorder)
+    }
+
+    @ViewBuilder private func actions(_ lines: [LogLine]) -> some View {
+        Button(L("Копировать"), systemImage: "doc.on.doc") {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(lines.map(render).joined(separator: "\n"), forType: .string)
+        }
+        .disabled(lines.isEmpty)
+        Button(L("Сохранить…"), systemImage: "square.and.arrow.down") { save() }
+        Button(L("Очистить"), systemImage: "trash") { model.logs.clear() }
+            .disabled(model.logs.lines.isEmpty)
+    }
+
     var body: some View {
         let lines = lines
         VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                Picker(L("Уровень"), selection: $minLevel) {
-                    Text(L("Все")).tag(LogLevel.debug)
-                    Text(L("Инфо и выше")).tag(LogLevel.info)
-                    Text(L("Предупреждения и ошибки")).tag(LogLevel.warn)
-                    Text(L("Только ошибки")).tag(LogLevel.error)
+            // В узком окне фильтры - отдельной строкой над поиском и кнопками.
+            Group {
+                if compact {
+                    VStack(spacing: 8) {
+                        HStack(spacing: 8) { levelPicker; sourcePicker }
+                        HStack(spacing: 8) { searchField; actions(lines) }
+                    }
+                } else {
+                    HStack(spacing: 10) { levelPicker.fixedSize(); sourcePicker.fixedSize(); searchField; actions(lines) }
                 }
-                .labelsHidden().fixedSize()
-                Picker(L("Источник"), selection: $source) {
-                    Text(L("Все источники")).tag(LogSource?.none)
-                    Text(L("Ядро")).tag(LogSource?.some(.core))
-                    Text(L("Движок")).tag(LogSource?.some(.engine))
-                    Text(L("Приложение")).tag(LogSource?.some(.app))
-                }
-                .labelsHidden().fixedSize()
-                TextField(L("Поиск"), text: $query).textFieldStyle(.roundedBorder)
-                Button(L("Копировать"), systemImage: "doc.on.doc") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(lines.map(render).joined(separator: "\n"), forType: .string)
-                }
-                .disabled(lines.isEmpty)
-                Button(L("Сохранить…"), systemImage: "square.and.arrow.down") { save() }
-                Button(L("Очистить"), systemImage: "trash") { model.logs.clear() }
-                    .disabled(model.logs.lines.isEmpty)
             }
             .labelStyle(.iconOnly)
             .padding(10)

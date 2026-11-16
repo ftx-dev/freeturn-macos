@@ -3,14 +3,94 @@ import FreeTurnKit
 
 struct ServersView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.compactLayout) private var compact
+    /// Узкая раскладка: открытый на отдельном экране сервер.
+    @State private var opened: String?
     @State private var renaming: Server?
     @State private var newName = ""
     @State private var deleting: Server?
 
     var body: some View {
         @Bindable var model = model
+        Group {
+            if compact { compactBody } else { wideBody }
+        }
+        .toolbar {
+            // Разделы живут скрытыми (см. RootView): кнопки панели - только у видимого.
+            if model.section == .servers { addMenu }
+        }
+        .onAppear { if model.selectedServerId == nil { model.selectedServerId = model.servers.activeId } }
+        .alert(L("Переименовать сервер"), isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+            TextField(L("Имя сервера"), text: $newName)
+            Button(L("Сохранить")) {
+                if let renaming { model.servers.rename(id: renaming.id, to: newName); model.persist() }
+            }
+            Button(L("Отмена"), role: .cancel) {}
+        }
+        .confirmationDialog(L("Удалить сервер?"), isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+                            presenting: deleting) { server in
+            Button(L("Удалить"), role: .destructive) {
+                model.servers.remove(id: server.id)
+                model.persist()
+            }
+        } message: { server in
+            Text(String(format: L("Сервер «%@» и все его настройки будут удалены из приложения."), server.name))
+        }
+    }
+
+    /// Узкая раскладка: список на всю ширину, сервер - отдельным экраном.
+    @ViewBuilder private var compactBody: some View {
+        @Bindable var model = model
+        if let id = opened, let server = model.servers.list.first(where: { $0.id == id }) {
+            VStack(spacing: 0) {
+                CompactBackBar(title: server.name) { opened = nil }
+                ServerDetailView(serverId: id)
+            }
+        } else {
+            List {
+                ForEach(model.servers.list) { server in
+                    Button {
+                        model.selectedServerId = server.id
+                        opened = server.id
+                    } label: {
+                        HStack {
+                            ServerRow(server: server, active: server.id == model.servers.activeId)
+                            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu { rowMenu(server) }
+                }
+            }
+            .overlay {
+                if model.servers.list.isEmpty {
+                    ContentUnavailableView(L("Нет серверов"), systemImage: "server.rack",
+                                           description: Text(L("Вставьте ссылку freeturn:// или добавьте сервер вручную")))
+                }
+            }
+        }
+    }
+
+    private var addMenu: some ToolbarContent {
+            ToolbarItem {
+                Menu {
+                    Button(L("Вставить из буфера"), systemImage: "doc.on.clipboard") { model.importFromPasteboard() }
+                    Button(L("QR-код из файла…"), systemImage: "qrcode") { model.importQRFromFile() }
+                    Button(L("QR-код с экрана"), systemImage: "qrcode.viewfinder") { model.importQRFromScreen() }
+                    Divider()
+                    Button(L("Ручная настройка"), systemImage: "square.and.pencil") { model.addManualServer() }
+                    Button(L("Восстановить из резервной копии…"), systemImage: "clock.arrow.circlepath") { model.section = .settings }
+                } label: {
+                    Label(L("Добавить сервер"), systemImage: "plus")
+                }
+            }
+    }
+
+    private var wideBody: some View {
+        @Bindable var model = model
         // Фиксированная колонка списка: HSplitView внутри NavigationSplitView вылезал за края окна.
-        HStack(spacing: 0) {
+        return HStack(spacing: 0) {
             List(selection: $model.selectedServerId) {
                 ForEach(model.servers.list) { server in
                     ServerRow(server: server, active: server.id == model.servers.activeId)
@@ -37,40 +117,7 @@ struct ServersView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .toolbar {
-            // Разделы живут скрытыми (см. RootView): кнопки панели - только у видимого.
-            if model.section == .servers {
-                ToolbarItem {
-                    Menu {
-                        Button(L("Вставить из буфера"), systemImage: "doc.on.clipboard") { model.importFromPasteboard() }
-                        Button(L("QR-код из файла…"), systemImage: "qrcode") { model.importQRFromFile() }
-                        Button(L("QR-код с экрана"), systemImage: "qrcode.viewfinder") { model.importQRFromScreen() }
-                        Divider()
-                        Button(L("Ручная настройка"), systemImage: "square.and.pencil") { model.addManualServer() }
-                        Button(L("Восстановить из резервной копии…"), systemImage: "clock.arrow.circlepath") { model.section = .settings }
-                    } label: {
-                        Label(L("Добавить сервер"), systemImage: "plus")
-                    }
-                }
-            }
-        }
-        .onAppear { if model.selectedServerId == nil { model.selectedServerId = model.servers.activeId } }
-        .alert(L("Переименовать сервер"), isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
-            TextField(L("Имя сервера"), text: $newName)
-            Button(L("Сохранить")) {
-                if let renaming { model.servers.rename(id: renaming.id, to: newName); model.persist() }
-            }
-            Button(L("Отмена"), role: .cancel) {}
-        }
-        .confirmationDialog(L("Удалить сервер?"), isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
-                            presenting: deleting) { server in
-            Button(L("Удалить"), role: .destructive) {
-                model.servers.remove(id: server.id)
-                model.persist()
-            }
-        } message: { server in
-            Text(String(format: L("Сервер «%@» и все его настройки будут удалены из приложения."), server.name))
-        }
+
     }
 
     @ViewBuilder private func rowMenu(_ server: Server) -> some View {

@@ -4,6 +4,9 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismissWindow) private var dismissWindow
     @State private var visited: Set<AppSection> = []
+    @State private var frozenSize = CGSize(width: 730, height: 620)
+    @State private var pendingSize = CGSize.zero
+    @State private var resizeSettle: Task<Void, Never>?
     /// Окно при запуске уже закрывали (режим «только в строке меню») - второй раз не закрываем.
     @MainActor private static var launchHandled = false
 
@@ -67,16 +70,32 @@ struct RootView: View {
                 }
                 // Открытый однажды раздел остаётся жить: формы «Серверов» и «Маршрутов» собираются
                 // 200-350 мс, и пересобирать их на каждом переключении - это и была задержка.
-                ZStack {
+                // Скрытые разделы получают замороженный размер: при сворачивании боковой панели
+                // и растягивании окна каждый кадр пересчитывается только видимый раздел -
+                // иначе анимация панели шла рывками (раскладывались все шесть разделов).
+                ZStack(alignment: .topLeading) {
                     ForEach(AppSection.allCases.filter(visited.contains)) { section in
                         let current = section == model.section
                         page(section)
+                            .frame(width: current ? nil : max(frozenSize.width, 1), height: current ? nil : max(frozenSize.height, 1))
+                            .frame(maxWidth: current ? .infinity : nil, maxHeight: current ? .infinity : nil)
                             .opacity(current ? 1 : 0)
                             .allowsHitTesting(current)
                             .accessibilityHidden(!current)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+                .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
+                    // Размер для скрытых обновляем, только пока панель не анимируется: по завершении
+                    // изменения (пауза 0,3 с) - так раздел при открытии почти всегда уже нужного размера.
+                    pendingSize = size
+                    resizeSettle?.cancel()
+                    resizeSettle = Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        if !Task.isCancelled { frozenSize = pendingSize }
+                    }
+                }
                 .onChange(of: model.section, initial: true) { _, section in
                     visited.insert(section)
                 }
@@ -105,47 +124,90 @@ struct RootView: View {
     }
 }
 
-/// Экспериментальный компактный режим: окно 400×600 с главным экраном и быстрыми переходами.
-/// Разделы целиком открываются в обычном окне - кнопки внизу разворачивают его на нужном разделе.
+/// Узкая раскладка (компактное окно 400×600): разделы с двумя колонками показывают список,
+/// а детали - отдельным экраном с кнопкой «Назад».
+private struct CompactLayoutKey: EnvironmentKey { static let defaultValue = false }
+extension EnvironmentValues {
+    var compactLayout: Bool {
+        get { self[CompactLayoutKey.self] }
+        set { self[CompactLayoutKey.self] = newValue }
+    }
+}
+
+/// Экспериментальный компактный режим: окно 400×600, все разделы в одну колонку, вкладки внизу.
 struct CompactView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
         VStack(spacing: 0) {
-            HomeView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Group {
+                switch model.section {
+                case .home: HomeView()
+                case .servers: ServersView()
+                case .routing: RoutingView()
+                case .logs: LogsView()
+                case .settings: SettingsView()
+                case .about: AboutView()
+                }
+            }
+            .environment(\.compactLayout, true)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             Divider()
             HStack(spacing: 0) {
-                ForEach([AppSection.servers, .routing, .logs, .settings]) { section in
-                    Button { expand(to: section) } label: {
+                ForEach(AppSection.allCases) { section in
+                    let current = section == model.section
+                    Button { model.section = section } label: {
                         VStack(spacing: 3) {
-                            Image(systemName: section.icon).font(.system(size: 15))
-                            Text(section.title).font(.caption2)
+                            Image(systemName: section.icon).font(.system(size: 15, weight: current ? .semibold : .regular))
+                            Text(section.title).font(.system(size: 9.5)).lineLimit(1).minimumScaleFactor(0.8)
                         }
                         .frame(maxWidth: .infinity)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(current ? Color.accentColor : .secondary)
+                    .accessibilityAddTraits(current ? .isSelected : [])
                 }
             }
-            .padding(.vertical, 8)
-        }
-        .navigationTitle("FreeTurnX")
-        .toolbar {
-            ToolbarItem {
-                Button { expand(to: .home) } label: {
-                    Label(L("Развернуть"), systemImage: "arrow.up.left.and.arrow.down.right")
+            .padding(.vertical, 7)
+            .padding(.horizontal, 4)
+            // Кнопка - на панели вкладок, а не на всём окне: SwiftUI ставит кнопки в порядке вложенности,
+            // так «+» раздела (серверы, маршруты) оказывается слева от неё, а она - справа с краю.
+            .toolbar {
+                ToolbarItem {
+                    Button {
+                        model.settings.compactWindow = false
+                        model.persist()
+                    } label: {
+                        Label(L("Развернуть"), systemImage: "arrow.up.left.and.arrow.down.right")
+                    }
+                    .help(L("Обычное окно"))
                 }
-                .help(L("Обычное окно"))
             }
         }
+        .navigationTitle(model.section == .home ? "FreeTurnX" : model.section.title)
     }
+}
 
-    private func expand(to section: AppSection) {
-        model.section = section
-        model.settings.compactWindow = false
-        model.persist()
+/// Шапка экрана деталей в узкой раскладке: «‹ Назад» и заголовок.
+struct CompactBackBar: View {
+    let title: String
+    let back: () -> Void
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Button(action: back) {
+                Label(L("Назад"), systemImage: "chevron.left").labelStyle(.titleAndIcon)
+            }
+            .buttonStyle(.borderless)
+            Spacer()
+            Text(title).font(.headline).lineLimit(1)
+            Spacer()
+            Color.clear.frame(width: 60, height: 1) // уравновешивает кнопку, чтобы заголовок стоял по центру
+        }
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .background(.bar)
+        .overlay(alignment: .bottom) { Divider() }
     }
 }
 
@@ -178,22 +240,32 @@ enum WindowMode {
     }
 }
 
-/// Окно появляется уже в итоговом виде. Первые ~0,2 с после создания macOS раскладывает подложку
-/// боковой панели шире (пока достраивает заголовок и тулбар), и вкладки «дёргались» на место.
-/// Поэтому окно 0,3 с остаётся прозрачным и показывается без системной анимации открытия.
+/// Окно появляется уже в итоговом виде. В момент показа SwiftUI ставит окну тулбар (область
+/// содержимого меняется с 620 на 600 pt), и стеклянная подложка боковой панели доезжает на место
+/// за несколько кадров - вкладки «дёргались». Окно прячется ровно в момент, когда становится
+/// активным (до первой отрисовки), и показывается через несколько кадров, без анимации открытия.
 struct NoOpenAnimation: NSViewRepresentable {
-    /// Окна, которые уже прятали: служебный вид SwiftUI может пересоздать.
     @MainActor private static var handled = Set<ObjectIdentifier>()
 
     final class Probe: NSView {
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            guard let window, NoOpenAnimation.handled.insert(ObjectIdentifier(window)).inserted else { return }
-            window.animationBehavior = .none
-            window.alphaValue = 0
-            // Окно держится сильной ссылкой: показ не зависит от жизни этого вида.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { window.alphaValue = 1 }
+            window?.animationBehavior = .none
         }
+    }
+
+    /// Спрятать окно до первой отрисовки. Страховка: через секунду оно показывается в любом случае.
+    @MainActor static func hide(_ window: NSWindow) {
+        guard handled.insert(ObjectIdentifier(window)).inserted else { return }
+        window.animationBehavior = .none
+        window.alphaValue = 0
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { window.alphaValue = 1 }
+    }
+
+    /// Окно стало активным: подложка доезжает на место за несколько кадров - показать после них.
+    @MainActor static func revealSoon(_ window: NSWindow) {
+        guard window.alphaValue < 1 else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { window.alphaValue = 1 }
     }
 
     func makeNSView(context: Context) -> NSView { Probe() }

@@ -289,8 +289,7 @@
 "Окно" = "Window";
 "Только в строке меню" = "Menu bar only";
 "Без значка в Dock: подключение, серверы и скорость — в панели по значку в строке меню, как у WireGuard." = "No Dock icon: connection, servers and speed live in the menu bar panel, like WireGuard.";
-"Компактное окно (эксперимент)" = "Compact window (experimental)";
-"Окно 400×600 с главным экраном; остальные разделы открываются в обычном окне." = "A 400×600 window with the home screen; other sections open in the regular window.";
+"Окно 400×600: все разделы в одну колонку, вкладки внизу." = "A 400×600 window: every section in one column, tabs at the bottom.";
 "Обычное окно" = "Regular window";
 "Компактное окно" = "Compact window";
 "Развернуть" = "Expand";
@@ -301,3 +300,7 @@
 "через релей" = "via relay";
 "Сейчас установлена %@" = "Installed: %@";
 "Открыть на GitHub" = "Open on GitHub";
+"меняется после отключения" = "change after disconnecting";
+"Назад" = "Back";
+"Действия" = "Actions";
+"Стек" = "Stack";
