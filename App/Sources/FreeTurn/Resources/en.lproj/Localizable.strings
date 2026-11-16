@@ -299,3 +299,5 @@
 "Добавить сервер…" = "Add server…";
 "напрямую" = "direct";
 "через релей" = "via relay";
+"Сейчас установлена %@" = "Installed: %@";
+"Открыть на GitHub" = "Open on GitHub";

@@ -127,6 +127,13 @@ final class AppModel {
         if ProcessInfo.processInfo.environment["FREETURN_DEMO_SHARE"] != nil {
             DispatchQueue.main.async { self.sharing = self.activeServer }
         }
+        // FREETURN_DEMO_UPDATE=<файл с заметками> - показать предложение обновиться: для проверки интерфейса.
+        if let path = ProcessInfo.processInfo.environment["FREETURN_DEMO_UPDATE"], let notes = try? String(contentsOfFile: path, encoding: .utf8),
+           let fake = URL(string: "https://github.com/ftx-dev/freeturn-macos/releases/latest") {
+            DispatchQueue.main.async {
+                self.offerUpdate = AvailableUpdate(version: "0.2.2", dmgURL: fake, checksumsURL: nil, pageURL: fake, notes: notes)
+            }
+        }
         // FREETURN_SECTION - открыть приложение сразу на нужном разделе: для проверок интерфейса.
         if let raw = ProcessInfo.processInfo.environment["FREETURN_SECTION"], let start = AppSection(rawValue: raw) {
             section = start

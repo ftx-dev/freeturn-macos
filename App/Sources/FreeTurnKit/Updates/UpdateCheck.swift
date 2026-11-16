@@ -29,6 +29,14 @@ public struct AvailableUpdate: Equatable, Sendable {
     public var checksumsURL: URL?
     public var pageURL: URL?
     public var notes: String
+
+    public init(version: String, dmgURL: URL, checksumsURL: URL?, pageURL: URL?, notes: String) {
+        self.version = version
+        self.dmgURL = dmgURL
+        self.checksumsURL = checksumsURL
+        self.pageURL = pageURL
+        self.notes = notes
+    }
 }
 
 /// Обновления из GitHub Releases. DMG собирается под каждую архитектуру отдельно (make dmg),

@@ -16,6 +16,12 @@ struct RootView: View {
                 split.frame(minWidth: 920, minHeight: 560)
             }
         }
+        // Размер окна под режим задаём самому окну. Не windowResizability(.contentSize): с ним окно
+        // подгонялось под содержимое, и достраиваемые в фоне разделы раздвигали его - вкладки дёргались.
+        .background(NoOpenAnimation())
+        .onChange(of: model.settings.compactWindow, initial: true) { _, compact in
+            DispatchQueue.main.async { WindowMode.apply(compact: compact) }
+        }
         .onAppear {
             // Только в строке меню: при запуске окна нет, как у WireGuard. Открыть - из панели.
             if !Self.launchHandled {
@@ -31,14 +37,7 @@ struct RootView: View {
         } message: {
             Text(L("Подпишитесь на Telegram-канал, чтобы первыми узнавать о новых версиях."))
         }
-        .alert(String(format: L("Доступна версия %@"), model.offerUpdate?.version ?? ""),
-               isPresented: Binding(get: { model.offerUpdate != nil }, set: { if !$0 { model.offerUpdate = nil } }),
-               presenting: model.offerUpdate) { update in
-            Button(L("Обновить")) { model.installUpdate(update) }
-            Button(L("Позже"), role: .cancel) {}
-        } message: { update in
-            Text(update.notes.isEmpty ? L("Приложение перезапустится. VPN на время обновления отключится.") : update.notes)
-        }
+        .sheet(item: $model.offerUpdate) { UpdateSheet(update: $0) }
         .alert(L("Ошибка импорта"), isPresented: Binding(get: { model.importError != nil }, set: { if !$0 { model.importError = nil } })) {
             Button(L("Понятно"), role: .cancel) {}
         } message: {
@@ -148,4 +147,55 @@ struct CompactView: View {
         model.settings.compactWindow = false
         model.persist()
     }
+}
+
+/// Размеры главного окна в обычном и компактном режимах.
+enum WindowMode {
+    static let compact = NSSize(width: 400, height: 600)
+    static let regularMin = NSSize(width: 920, height: 560)
+    static let regularDefault = NSSize(width: 1000, height: 680)
+
+    @MainActor static func apply(compact isCompact: Bool) {
+        guard let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "main" }) else { return }
+        if isCompact {
+            window.contentMinSize = compact
+            window.contentMaxSize = compact
+            if window.contentLayoutRect.size != compact { resize(window, to: compact) }
+        } else {
+            window.contentMaxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: .greatestFiniteMagnitude)
+            window.contentMinSize = regularMin
+            let size = window.contentLayoutRect.size
+            if size.width < regularMin.width || size.height < regularMin.height { resize(window, to: regularDefault) }
+        }
+        window.standardWindowButton(.zoomButton)?.isEnabled = !isCompact
+    }
+
+    /// Меняет размер, оставляя на месте левый верхний угол окна - как при ручном растягивании.
+    @MainActor private static func resize(_ window: NSWindow, to content: NSSize) {
+        var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: content))
+        frame.origin = NSPoint(x: window.frame.minX, y: window.frame.maxY - frame.height)
+        window.setFrame(frame, display: true, animate: window.isVisible)
+    }
+}
+
+/// Окно появляется уже в итоговом виде. Первые ~0,2 с после создания macOS раскладывает подложку
+/// боковой панели шире (пока достраивает заголовок и тулбар), и вкладки «дёргались» на место.
+/// Поэтому окно 0,3 с остаётся прозрачным и показывается без системной анимации открытия.
+struct NoOpenAnimation: NSViewRepresentable {
+    /// Окна, которые уже прятали: служебный вид SwiftUI может пересоздать.
+    @MainActor private static var handled = Set<ObjectIdentifier>()
+
+    final class Probe: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard let window, NoOpenAnimation.handled.insert(ObjectIdentifier(window)).inserted else { return }
+            window.animationBehavior = .none
+            window.alphaValue = 0
+            // Окно держится сильной ссылкой: показ не зависит от жизни этого вида.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { window.alphaValue = 1 }
+        }
+    }
+
+    func makeNSView(context: Context) -> NSView { Probe() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }
