@@ -54,7 +54,16 @@ enum AppIcons {
     }
 
     @MainActor static func apply(_ variant: String) {
+        let custom = variant == "standard" ? nil : image(variant)
         // nil - вернуть значок из бандла.
-        NSApp.applicationIconImage = variant == "standard" ? nil : image(variant)
+        NSApp.applicationIconImage = custom
+        // Значок на самом бандле - его показывают Finder, Launchpad и Dock, пока приложение закрыто.
+        // Подпись не ломается: значок лежит в атрибутах папки .app, а не в Contents. После автообновления
+        // бандл новый - значок ставится заново при запуске (apply зовётся на старте).
+        // shortcut: если .app лежит там, куда нет права записи, значок меняется только у запущенного приложения.
+        let path = Bundle.main.bundlePath
+        DispatchQueue.global(qos: .utility).async {
+            NSWorkspace.shared.setIcon(custom, forFile: path, options: [])
+        }
     }
 }
