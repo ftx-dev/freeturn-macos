@@ -49,17 +49,20 @@ struct RoutingView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .toolbar {
-            ToolbarItem {
-                Menu {
-                    Button(L("Новый профиль"), systemImage: "plus") {
-                        let profile = RoutingProfile(name: L("Новый профиль"), defaultAction: .vpn, rules: [])
-                        model.routing.add(profile)
-                        model.persist()
-                        selectedId = profile.id
+            // Разделы живут скрытыми (см. RootView): кнопки панели - только у видимого.
+            if model.section == .routing {
+                ToolbarItem {
+                    Menu {
+                        Button(L("Новый профиль"), systemImage: "plus") {
+                            let profile = RoutingProfile(name: L("Новый профиль"), defaultAction: .vpn, rules: [])
+                            model.routing.add(profile)
+                            model.persist()
+                            selectedId = profile.id
+                        }
+                        Button(L("Импорт из файла…"), systemImage: "square.and.arrow.down") { importProfile() }
+                    } label: {
+                        Label(L("Добавить профиль"), systemImage: "plus")
                     }
-                    Button(L("Импорт из файла…"), systemImage: "square.and.arrow.down") { importProfile() }
-                } label: {
-                    Label(L("Добавить профиль"), systemImage: "plus")
                 }
             }
         }

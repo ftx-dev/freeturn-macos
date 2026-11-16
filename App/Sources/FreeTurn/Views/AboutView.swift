@@ -8,7 +8,7 @@ struct AboutView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
-                Image(nsImage: AppIcons.image(model.settings.appIcon))
+                Image(nsImage: AppIcons.image("x"))
                     .resizable()
                     .frame(width: 128, height: 128)
                     .padding(.top, 32)
@@ -25,7 +25,7 @@ struct AboutView: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 Link(L("Исходный код на GitHub"), destination: URL(string: "https://github.com/\(UpdateCheck.repository)")!)
-                Text(L("Ядро — free-turn-proxy, туннель — Amnezia Box."))
+                Text(L("Ядро: free-turn-proxy, туннель: Amnezia Box."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.top, 12)
@@ -39,14 +39,18 @@ struct AboutView: View {
 /// Три варианта иконки. В Dock меняется сразу; значок FreeTurn.app в Finder остаётся стандартным -
 /// правка значка внутри бандла сломала бы его подпись.
 enum AppIcons {
-    static let variants: [(id: String, title: String)] = [("standard", "Стандартная"), ("black", "Black"), ("x", "X")]
+    static let variants: [(id: String, title: String)] = [("standard", "Classic"), ("black", "Black"), ("x", "X")]
+
+    /// Картинки декодируются один раз: PNG 1024×1024 на каждой отрисовке настроек тормозил переключение.
+    @MainActor private static var cache: [String: NSImage] = [:]
 
     @MainActor static func image(_ variant: String) -> NSImage {
         let name = variants.contains { $0.id == variant } ? variant : "standard"
-        if let url = L10n.resources.url(forResource: "icon-\(name)", withExtension: "png"), let image = NSImage(contentsOf: url) {
-            return image
-        }
-        return NSImage(named: NSImage.applicationIconName) ?? NSImage()
+        if let cached = cache[name] { return cached }
+        let image = L10n.resources.url(forResource: "icon-\(name)", withExtension: "png").flatMap(NSImage.init(contentsOf:))
+            ?? NSImage(named: NSImage.applicationIconName) ?? NSImage()
+        cache[name] = image
+        return image
     }
 
     @MainActor static func apply(_ variant: String) {

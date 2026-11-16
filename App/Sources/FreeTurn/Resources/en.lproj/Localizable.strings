@@ -282,9 +282,8 @@
 "Следите за обновлениями" = "Stay up to date";
 "Сохранить QR…" = "Save QR…";
 "Ссылка равносильна ключам: передавайте её только тем, кому доверяете. Отдельный доступ для другого человека выпускается на сервере — это появится вместе с управлением сервером." = "The link is as good as the keys: share it only with people you trust. A separate access for another person is issued on the server — this comes with server management.";
-"Стандартная" = "Standard";
 "Текущие серверы и настройки будут заменены." = "Current servers and settings will be replaced.";
 "Экспорт настроек" = "Export settings";
 "Экспортировать" = "Export";
 "Экспортировать…" = "Export…";
-"Ядро — free-turn-proxy, туннель — Amnezia Box." = "Core — free-turn-proxy, tunnel — Amnezia Box.";
+"Ядро: free-turn-proxy, туннель: Amnezia Box." = "Core: free-turn-proxy, tunnel: Amnezia Box.";

@@ -38,16 +38,19 @@ struct ServersView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .toolbar {
-            ToolbarItem {
-                Menu {
-                    Button(L("Вставить из буфера"), systemImage: "doc.on.clipboard") { model.importFromPasteboard() }
-                    Button(L("QR-код из файла…"), systemImage: "qrcode") { model.importQRFromFile() }
-                    Button(L("QR-код с экрана"), systemImage: "qrcode.viewfinder") { model.importQRFromScreen() }
-                    Divider()
-                    Button(L("Ручная настройка"), systemImage: "square.and.pencil") { model.addManualServer() }
-                    Button(L("Восстановить из резервной копии…"), systemImage: "clock.arrow.circlepath") { model.section = .settings }
-                } label: {
-                    Label(L("Добавить сервер"), systemImage: "plus")
+            // Разделы живут скрытыми (см. RootView): кнопки панели - только у видимого.
+            if model.section == .servers {
+                ToolbarItem {
+                    Menu {
+                        Button(L("Вставить из буфера"), systemImage: "doc.on.clipboard") { model.importFromPasteboard() }
+                        Button(L("QR-код из файла…"), systemImage: "qrcode") { model.importQRFromFile() }
+                        Button(L("QR-код с экрана"), systemImage: "qrcode.viewfinder") { model.importQRFromScreen() }
+                        Divider()
+                        Button(L("Ручная настройка"), systemImage: "square.and.pencil") { model.addManualServer() }
+                        Button(L("Восстановить из резервной копии…"), systemImage: "clock.arrow.circlepath") { model.section = .settings }
+                    } label: {
+                        Label(L("Добавить сервер"), systemImage: "plus")
+                    }
                 }
             }
         }

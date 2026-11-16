@@ -39,7 +39,7 @@ struct SettingsView: View {
                             } label: {
                                 VStack(spacing: 4) {
                                     Image(nsImage: AppIcons.image(variant.id)).resizable().frame(width: 44, height: 44)
-                                    Text(variant.id == "standard" ? L("Стандартная") : variant.title).font(.caption)
+                                    Text(variant.title).font(.caption)
                                 }
                                 .padding(6)
                                 .background(model.settings.appIcon == variant.id ? Color.accentColor.opacity(0.18) : .clear,
@@ -48,7 +48,7 @@ struct SettingsView: View {
                                     .strokeBorder(model.settings.appIcon == variant.id ? Color.accentColor : .clear, lineWidth: 1.5))
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel(variant.id == "standard" ? L("Стандартная") : variant.title)
+                            .accessibilityLabel(variant.title)
                         }
                     }
                 }
@@ -165,7 +165,8 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .onChange(of: model.settings) { model.persist() }
-        .task { await model.refreshDaemonStatus() }
+        // Раздел живёт скрытым: статус службы освежаем при каждом показе, а не только при создании.
+        .task(id: model.section) { if model.section == .settings { await model.refreshDaemonStatus() } }
         .sheet(isPresented: $exporting) {
             PasswordSheet(title: L("Экспорт настроек"), confirm: true, password: $password, passwordAgain: $passwordAgain,
                           hint: L("Понадобится при восстановлении на другом устройстве. Восстановить пароль нельзя.")) {

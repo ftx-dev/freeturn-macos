@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @State private var visited: Set<AppSection> = []
 
     var body: some View {
         @Bindable var model = model
@@ -19,8 +20,29 @@ struct RootView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(.yellow.opacity(0.25))
                 }
-                detail
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // Открытый однажды раздел остаётся жить: формы «Серверов» и «Маршрутов» собираются
+                // 200-350 мс, и пересобирать их на каждом переключении - это и была задержка.
+                ZStack {
+                    ForEach(AppSection.allCases.filter(visited.contains)) { section in
+                        let current = section == model.section
+                        page(section)
+                            .opacity(current ? 1 : 0)
+                            .allowsHitTesting(current)
+                            .accessibilityHidden(!current)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onChange(of: model.section, initial: true) { _, section in
+                    visited.insert(section)
+                }
+                // Остальные разделы собираются по одному сразу после показа окна - тогда и первый
+                // переход в любой из них мгновенный.
+                .task {
+                    for section in AppSection.allCases {
+                        try? await Task.sleep(for: .milliseconds(60))
+                        visited.insert(section)
+                    }
+                }
             }
             .navigationTitle(model.section.title)
         }
@@ -49,8 +71,8 @@ struct RootView: View {
         .preferredColorScheme(model.colorScheme)
     }
 
-    @ViewBuilder private var detail: some View {
-        switch model.section {
+    @ViewBuilder private func page(_ section: AppSection) -> some View {
+        switch section {
         case .home: HomeView()
         case .servers: ServersView()
         case .routing: RoutingView()
