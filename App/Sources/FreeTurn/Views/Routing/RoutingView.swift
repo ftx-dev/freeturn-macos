@@ -33,6 +33,7 @@ struct RoutingView: View {
                     }
                     .padding(.vertical, 3)
                     .tag(profile.id)
+                    .listRowSeparator(.hidden)
                 }
             }
             .frame(width: 250)
