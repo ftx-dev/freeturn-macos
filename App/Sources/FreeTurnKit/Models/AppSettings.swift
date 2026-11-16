@@ -2,7 +2,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var theme = "system"
     public var language = "system"
     public var privacyMode = false
-    public var advancedCaptcha = false
+    public var advancedCaptcha = true
     public var autoConnect = false
     public var launchAtLogin = false
     public var debugScreen = false
@@ -11,8 +11,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var captchaTarget = "window"
     /// Проверять новые версии в GitHub Releases при запуске.
     public var checkUpdates = true
-    /// Иконка приложения: standard - синяя, black - чёрная OLED, x - чёрная с буквой X.
-    public var appIcon = "standard"
+    /// Иконка приложения: standard (Classic) - синяя, black - чёрная OLED, x - чёрная с буквой X (по умолчанию).
+    public var appIcon = "x"
     /// Разовое предложение подписаться на Telegram-канал уже показано.
     public var telegramPromptShown = false
     /// Прошлую сессию пользователь не выключал сам - основание для автоподключения.

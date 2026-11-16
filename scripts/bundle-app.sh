@@ -21,6 +21,8 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Helpers" "$APP/Contents/Resources/daemon"
 cp App/Bundle/Info.plist "$APP/Contents/Info.plist"
 cp App/Bundle/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+# Имя в Finder, Launchpad и Dock - FreeTurnX, хотя папка остаётся FreeTurn.app (на это имя завязано автообновление 0.1-0.2).
+cp -R App/Bundle/en.lproj App/Bundle/ru.lproj "$APP/Contents/Resources/"
 cp "$BIN/FreeTurn" "$APP/Contents/MacOS/FreeTurn"
 cp -R "$BIN/FreeTurn_FreeTurn.bundle" "$APP/Contents/Resources/"
 cp "$GOBIN/freeturn-core" "$APP/Contents/Helpers/freeturn-core"

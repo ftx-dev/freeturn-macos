@@ -2,10 +2,19 @@ import Foundation
 import Testing
 @testable import FreeTurnKit
 
-@Test func initialHasBothPresetsAndSharedIsAllViaVPN() {
+@Test func initialHasBothPresetsAndSharedIsRussiaDirect() {
     let file = RoutingFile.initial()
     #expect(file.profiles == [Presets.allViaVPN, Presets.russiaDirect])
-    #expect(file.sharedProfileId == Presets.allViaVPN.id)
+    #expect(file.sharedProfileId == Presets.russiaDirect.id)
+}
+
+@Test func newSettingsDefaults() {
+    let s = AppSettings()
+    #expect(s.appIcon == "x")
+    #expect(s.advancedCaptcha)
+    // Старые настройки без этих ключей тоже получают новые значения по умолчанию.
+    let old = try! JSONDecoder().decode(AppSettings.self, from: Data(#"{"theme":"dark"}"#.utf8))
+    #expect(old.appIcon == "x" && old.advancedCaptcha)
 }
 
 @Test func builtInProfileCannotBeRemovedOrChanged() {

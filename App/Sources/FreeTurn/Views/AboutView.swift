@@ -64,6 +64,8 @@ enum AppIcons {
         let path = Bundle.main.bundlePath
         DispatchQueue.global(qos: .utility).async {
             NSWorkspace.shared.setIcon(custom, forFile: path, options: [])
+            // Finder и Dock кэшируют значки - сообщаем, что бандл изменился.
+            NSWorkspace.shared.noteFileSystemChanged(path)
         }
     }
 }

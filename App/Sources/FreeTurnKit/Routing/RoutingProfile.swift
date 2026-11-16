@@ -69,7 +69,7 @@ extension RoutingProfile {
 
 extension RoutingFile {
     public static func initial() -> RoutingFile {
-        RoutingFile(profiles: [Presets.allViaVPN, Presets.russiaDirect], sharedProfileId: Presets.allViaVPN.id)
+        RoutingFile(profiles: [Presets.allViaVPN, Presets.russiaDirect], sharedProfileId: Presets.russiaDirect.id)
     }
 
     /// Файл с диска: встроенные профили берутся из текущей версии приложения, свои сохраняются.

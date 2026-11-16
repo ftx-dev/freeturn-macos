@@ -11,8 +11,9 @@ struct RootView: View {
                 Label(section.title, systemImage: section.icon).tag(section)
             }
             .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 240)
-            // Зазор между заголовком окна и подсветкой выбранной вкладки.
-            .contentMargins(.top, 8, for: .scrollContent)
+            // Зазор между заголовком окна и подсветкой выбранной вкладки. Не contentMargins: тот
+            // применяется не с первого кадра, и вкладки заметно прыгали после запуска.
+            .padding(.top, 8)
         } detail: {
             VStack(spacing: 0) {
                 if let error = model.loadError {
@@ -84,3 +85,4 @@ struct RootView: View {
         }
     }
 }
+
