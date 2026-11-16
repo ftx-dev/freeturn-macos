@@ -40,6 +40,8 @@ app: engine helper
 dmg:
 	scripts/make-dmg.sh arm64
 	scripts/make-dmg.sh x86_64
+	# Контрольные суммы - их сверяет автообновление перед установкой.
+	cd build && shasum -a 256 FreeTurn-*-arm64.dmg FreeTurn-*-x86_64.dmg > SHA256SUMS.txt
 
 icon:
 	swift scripts/make-icon.swift App/Bundle/AppIcon.svg App/Bundle/AppIcon.icns

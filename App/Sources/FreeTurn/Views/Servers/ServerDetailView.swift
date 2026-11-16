@@ -33,13 +33,13 @@ struct ServerDetailView: View {
 
             Section {
                 TextField(L("Имя сервера"), text: s.name)
-                TextField(L("Адрес сервера"), text: s.client.serverAddress, prompt: Text("1.2.3.4:56000"))
+                secretField(L("Адрес сервера"), s.client.serverAddress, prompt: "1.2.3.4:56000")
                 Picker(L("Способ"), selection: s.client.provider) {
                     Text(L("Через релей")).tag(Provider.relay)
                     Text(L("Напрямую")).tag(Provider.direct)
                 }
                 if relay {
-                    TextField(L("Ссылка на звонок"), text: s.client.callLink, prompt: Text("https://vk.ru/call/join/…"))
+                    secretField(L("Ссылка на звонок"), s.client.callLink, prompt: "https://vk.ru/call/join/…")
                 }
             } header: {
                 Text(L("Подключение"))
@@ -65,7 +65,7 @@ struct ServerDetailView: View {
                 }
                 if s.wrappedValue.opts.obfEnabled {
                     HStack {
-                        TextField(L("Ключ (64 hex)"), text: s.opts.obfKey)
+                        secretField(L("Ключ (64 hex)"), s.opts.obfKey)
                             .font(.system(.body, design: .monospaced))
                         Button(L("Сгенерировать")) { s.wrappedValue.opts.obfKey = ObfProfile.generateKey() }
                     }
@@ -108,22 +108,27 @@ struct ServerDetailView: View {
                     Toggle(L("Ручной ввод капчи"), isOn: s.client.manualCaptcha)
                     Toggle(L("Альтернативный TURN-узел"), isOn: s.client.magicSwitch)
                     if s.wrappedValue.client.magicSwitch {
-                        TextField(L("Адрес TURN-узла"), text: s.client.magicTurn)
+                        secretField(L("Адрес TURN-узла"), s.client.magicTurn)
                     }
                 }
             }
 
             Section(L("Туннель")) {
-                TextEditor(text: Binding(
-                    get: { s.wrappedValue.client.wireGuardConfig },
-                    set: { text in
-                        s.wrappedValue.client.wireGuardConfig = text
-                        s.wrappedValue.client.tunnelTransport =
-                            text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? TunnelTransport.none : TunnelTransport.wireguard
-                    }))
-                    .font(.system(.caption, design: .monospaced))
-                    .frame(minHeight: 150)
-                    .privacySensitive()
+                if model.settings.privacyMode {
+                    Label(L("Конфиг скрыт в приватном режиме."), systemImage: "eye.slash")
+                        .foregroundStyle(.secondary)
+                } else {
+                    TextEditor(text: Binding(
+                        get: { s.wrappedValue.client.wireGuardConfig },
+                        set: { text in
+                            s.wrappedValue.client.wireGuardConfig = text
+                            s.wrappedValue.client.tunnelTransport =
+                                text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? TunnelTransport.none : TunnelTransport.wireguard
+                        }))
+                        .font(.system(.caption, design: .monospaced))
+                        .frame(minHeight: 150)
+                        .privacySensitive()
+                }
                 HStack {
                     tunnelStatus(s.wrappedValue.client.wireGuardConfig)
                     Spacer()
@@ -144,6 +149,15 @@ struct ServerDetailView: View {
         }
         .formStyle(.grouped)
         .disabled(locked)
+    }
+
+    /// Приватный режим: адреса, ключи и ссылка видны точками, но их можно ввести и заменить.
+    @ViewBuilder private func secretField(_ title: String, _ text: Binding<String>, prompt: String? = nil) -> some View {
+        if model.settings.privacyMode {
+            SecureField(title, text: text, prompt: prompt.map { Text($0) })
+        } else {
+            TextField(title, text: text, prompt: prompt.map { Text($0) })
+        }
     }
 
     private func footnote(_ text: String, color: Color = .secondary) -> some View {

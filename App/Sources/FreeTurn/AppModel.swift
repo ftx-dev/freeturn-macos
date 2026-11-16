@@ -34,6 +34,9 @@ final class AppModel {
     let store: Store
     let connection: ConnectionController
     let logs = LogStore()
+    let updater = Updater()
+    /// Найдено обновление при запуске - показать предложение один раз.
+    var offerUpdate: AvailableUpdate?
     let logFile: LogFile
 
     var servers = ServersFile()
@@ -87,6 +90,12 @@ final class AppModel {
         connection.onLog = { [weak self] line in self?.log(line) }
         connection.onStateChange = { [weak self] state in self?.stateChanged(state) }
         sleepWatcher = SleepWatcher { [weak self] slept in self?.connection.systemDidWake(sleptSeconds: slept) }
+        if settings.checkUpdates {
+            Task {
+                await updater.check()
+                offerUpdate = updater.available
+            }
+        }
         if AutoConnect.shouldConnect(settings: settings, hasActiveServer: activeServer != nil) {
             Task { await self.connect() }
         }
@@ -223,6 +232,10 @@ final class AppModel {
             }
             await refreshDaemonStatus()
         }
+    }
+
+    func installUpdate(_ update: AvailableUpdate) {
+        Task { await updater.install(update) { await self.connection.disconnect() } }
     }
 
     /// Удаляет данные приложения. Только свои файлы поимённо: каталог может быть задан снаружи.

@@ -9,6 +9,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var tunStack = "mixed"
     /// Где показывать ручную капчу: "window" - отдельное окно приложения, "browser" - браузер по умолчанию.
     public var captchaTarget = "window"
+    /// Проверять новые версии в GitHub Releases при запуске.
+    public var checkUpdates = true
     /// Прошлую сессию пользователь не выключал сам - основание для автоподключения.
     public var wasConnected = false
 
@@ -27,6 +29,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         let stack = c.value(.tunStack, d.tunStack)
         tunStack = ["system", "gvisor", "mixed"].contains(stack) ? stack : d.tunStack
         captchaTarget = c.value(.captchaTarget, d.captchaTarget) == "browser" ? "browser" : "window"
+        checkUpdates = c.value(.checkUpdates, d.checkUpdates)
         wasConnected = c.value(.wasConnected, d.wasConnected)
     }
 }

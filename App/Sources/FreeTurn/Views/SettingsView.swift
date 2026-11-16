@@ -60,6 +60,25 @@ struct SettingsView: View {
                 .disabled(manual)
             }
 
+            Section(L("Обновления")) {
+                LabeledContent(L("Версия"), value: "\(model.updater.currentVersion) · \(UpdateCheck.currentArch)")
+                Toggle(isOn: $model.settings.checkUpdates) {
+                    Text(L("Проверять при запуске"))
+                    Text(L("Новые версии берутся из GitHub Releases, под процессор этого Mac."))
+                }
+                HStack {
+                    updateStatus
+                    Spacer()
+                    if let update = model.updater.available {
+                        Button(String(format: L("Обновить до %@"), update.version)) { model.installUpdate(update) }
+                            .buttonStyle(.borderedProminent)
+                    } else {
+                        Button(L("Проверить сейчас")) { Task { await model.updater.check() } }
+                            .disabled(model.updater.phase == .checking)
+                    }
+                }
+            }
+
             Section(L("Фоновая служба")) {
                 LabeledContent(L("Состояние"), value: model.daemonStatusText)
                 HStack {
@@ -102,6 +121,18 @@ struct SettingsView: View {
             Button(L("Сбросить"), role: .destructive) { model.resetAll() }
         } message: {
             Text(L("Подключение остановится, серверы, профили маршрутов и логи будут удалены."))
+        }
+    }
+
+    @ViewBuilder private var updateStatus: some View {
+        switch model.updater.phase {
+        case .idle: EmptyView()
+        case .checking: ProgressView().controlSize(.small)
+        case .upToDate: Label(L("Установлена последняя версия"), systemImage: "checkmark.circle").foregroundStyle(.secondary)
+        case let .available(update): Text(String(format: L("Доступна версия %@"), update.version))
+        case .downloading: Label(L("Загрузка…"), systemImage: "arrow.down.circle").foregroundStyle(.secondary)
+        case .installing: Label(L("Установка…"), systemImage: "gearshape").foregroundStyle(.secondary)
+        case let .failed(text): Text(text).foregroundStyle(.red)
         }
     }
 

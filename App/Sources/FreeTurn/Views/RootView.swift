@@ -26,6 +26,14 @@ struct RootView: View {
         }
         .frame(minWidth: 920, minHeight: 560)
         .sheet(item: $model.importDraft) { ImportSheet(draft: $0) }
+        .alert(String(format: L("Доступна версия %@"), model.offerUpdate?.version ?? ""),
+               isPresented: Binding(get: { model.offerUpdate != nil }, set: { if !$0 { model.offerUpdate = nil } }),
+               presenting: model.offerUpdate) { update in
+            Button(L("Обновить")) { model.installUpdate(update) }
+            Button(L("Позже"), role: .cancel) {}
+        } message: { update in
+            Text(update.notes.isEmpty ? L("Приложение перезапустится. VPN на время обновления отключится.") : update.notes)
+        }
         .alert(L("Ошибка импорта"), isPresented: Binding(get: { model.importError != nil }, set: { if !$0 { model.importError = nil } })) {
             Button(L("Понятно"), role: .cancel) {}
         } message: {
