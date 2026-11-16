@@ -5,8 +5,8 @@ struct RootView: View {
     @Environment(\.dismissWindow) private var dismissWindow
     @State private var visited: Set<AppSection> = []
     @State private var frozenSize = CGSize(width: 730, height: 620)
-    @State private var pendingSize = CGSize.zero
-    @State private var resizeSettle: Task<Void, Never>?
+    /// Текущий размер области - без перерисовки на каждом кадре (не @State-значение, а коробка).
+    @State private var liveSize = SizeBox()
     /// Окно при запуске уже закрывали (режим «только в строке меню») - второй раз не закрываем.
     @MainActor private static var launchHandled = false
 
@@ -89,16 +89,10 @@ struct RootView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
-                .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
-                    // Размер для скрытых обновляем, только пока панель не анимируется: по завершении
-                    // изменения (пауза 0,3 с) - так раздел при открытии почти всегда уже нужного размера.
-                    pendingSize = size
-                    resizeSettle?.cancel()
-                    resizeSettle = Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(300))
-                        if !Task.isCancelled { frozenSize = pendingSize }
-                    }
-                }
+                // Размер для скрытых разделов обновляется только при переключении вкладки: в анимации
+                // боковой панели скрытые не пересчитываются вовсе - ни на каждом кадре, ни разом в конце.
+                .onGeometryChange(for: CGSize.self) { $0.size } action: { liveSize.size = $0 }
+                .onChange(of: model.section) { frozenSize = liveSize.size }
                 .onChange(of: model.section, initial: true) { _, section in
                     visited.insert(section)
                 }
@@ -274,3 +268,6 @@ struct NoOpenAnimation: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { Probe() }
     func updateNSView(_ nsView: NSView, context: Context) {}
 }
+
+/// Изменяемая коробка для значения, которое не должно вызывать перерисовку.
+final class SizeBox { var size = CGSize(width: 730, height: 620) }
