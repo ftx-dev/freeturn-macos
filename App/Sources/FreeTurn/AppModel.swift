@@ -150,6 +150,9 @@ final class AppModel {
         }
     }
 
+    /// Текущий режим окна для кода вне SwiftUI (AppDelegate подгоняет размер при показе окна).
+    @MainActor static var compactWindowSetting = false
+
     /// Без значка в Dock приложение живёт в строке меню; окно при этом открывается как обычно.
     @MainActor static func applyDockPolicy(menuBarOnly: Bool) {
         NSApp.setActivationPolicy(menuBarOnly ? .accessory : .regular)

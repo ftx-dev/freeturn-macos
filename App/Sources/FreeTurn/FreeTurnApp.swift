@@ -7,7 +7,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // и показывается, когда подложка боковой панели перестроится под тулбар - см. NoOpenAnimation.
         NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification, object: nil, queue: nil) { note in
             guard let window = note.object as? NSWindow, window.identifier?.rawValue == "main" else { return }
-            MainActor.assumeIsolated { NoOpenAnimation.revealSoon(window) }
+            MainActor.assumeIsolated {
+                // Тулбар появляется только при показе окна - размер под режим подгоняем ещё раз.
+                WindowMode.apply(compact: AppModel.compactWindowSetting)
+                NoOpenAnimation.revealSoon(window)
+            }
         }
     }
 

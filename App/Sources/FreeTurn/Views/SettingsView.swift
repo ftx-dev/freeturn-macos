@@ -171,13 +171,9 @@ struct SettingsView: View {
             }
 
             Section(L("Сброс")) {
-                Button(role: .destructive) { confirmingReset = true } label: {
-                    Label(L("Сбросить все настройки"), systemImage: "arrow.counterclockwise")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
-                .controlSize(.large)
+                Button(L("Сбросить все настройки"), role: .destructive) { confirmingReset = true }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.red)
             }
         }
         .formStyle(.grouped)

@@ -14,7 +14,9 @@ struct RootView: View {
         @Bindable var model = model
         Group {
             if model.settings.compactWindow {
-                CompactView().frame(width: 400, height: 600)
+                // Высота - вся доступная под тулбаром: размер окна задаёт WindowMode, а не жёсткая рамка
+                // (рамка 600 pt не учитывала тулбар и обрезала вкладки снизу и содержимое сверху).
+                CompactView().frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 split.frame(minWidth: 920, minHeight: 560)
             }
@@ -23,6 +25,7 @@ struct RootView: View {
         // подгонялось под содержимое, и достраиваемые в фоне разделы раздвигали его - вкладки дёргались.
         .background(NoOpenAnimation())
         .onChange(of: model.settings.compactWindow, initial: true) { _, compact in
+            AppModel.compactWindowSetting = compact
             DispatchQueue.main.async { WindowMode.apply(compact: compact) }
         }
         .onAppear {
@@ -208,7 +211,7 @@ struct CompactBackBar: View {
     }
 }
 
-/// Размеры главного окна в обычном и компактном режимах.
+/// Размеры главного окна в обычном и компактном режимах. Размеры - области содержимого под тулбаром.
 enum WindowMode {
     static let compact = NSSize(width: 400, height: 600)
     static let regularMin = NSSize(width: 920, height: 560)
@@ -216,15 +219,18 @@ enum WindowMode {
 
     @MainActor static func apply(compact isCompact: Bool) {
         guard let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "main" }) else { return }
+        // Тулбар лежит поверх содержимого окна: размер окна = нужная область + высота тулбара.
+        let toolbar = max(0, (window.contentView?.frame.height ?? 0) - window.contentLayoutRect.height)
+        func full(_ size: NSSize) -> NSSize { NSSize(width: size.width, height: size.height + toolbar) }
         if isCompact {
-            window.contentMinSize = compact
-            window.contentMaxSize = compact
-            if window.contentLayoutRect.size != compact { resize(window, to: compact) }
+            window.contentMinSize = full(compact)
+            window.contentMaxSize = full(compact)
+            if window.contentLayoutRect.size != compact { resize(window, to: full(compact)) }
         } else {
             window.contentMaxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: .greatestFiniteMagnitude)
-            window.contentMinSize = regularMin
+            window.contentMinSize = full(regularMin)
             let size = window.contentLayoutRect.size
-            if size.width < regularMin.width || size.height < regularMin.height { resize(window, to: regularDefault) }
+            if size.width < regularMin.width || size.height < regularMin.height { resize(window, to: full(regularDefault)) }
         }
         window.standardWindowButton(.zoomButton)?.isEnabled = !isCompact
     }
@@ -233,7 +239,8 @@ enum WindowMode {
     @MainActor private static func resize(_ window: NSWindow, to content: NSSize) {
         var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: content))
         frame.origin = NSPoint(x: window.frame.minX, y: window.frame.maxY - frame.height)
-        window.setFrame(frame, display: true, animate: window.isVisible)
+        // Без анимации: animate: true блокирует приложение на время анимации - «Развернуть» подвисало.
+        window.setFrame(frame, display: true, animate: false)
     }
 }
 
