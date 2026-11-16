@@ -44,15 +44,19 @@ struct HomeView: View {
                     ConnectButton(kind: kind) { model.toggleConnection() }
                         .disabled(state == .stopping)
                         .padding(.top, 20)
-                    Text(title).font(.title2.weight(.semibold))
-                    serverLine
+                    // Заголовок и строка сервера - одной группой, чуть ниже свечения кнопки.
+                    VStack(spacing: 8) {
+                        Text(title).font(.title2.weight(.semibold))
+                        serverLine
+                    }
+                    .padding(.top, 14)
                     if model.captchaNeedsAttention {
                         Button(L("Пройти проверку"), systemImage: "checkmark.shield") { model.reopenCaptcha() }
                             .buttonStyle(.borderedProminent)
                             .tint(.orange)
                     }
                     failureView
-                    if case .connected = state { StatsGrid() }
+                    if case .connected = state { StatsGrid().padding(.top, 6) }
                     if let profile = model.activeProfile {
                         Label("\(L("Маршруты:")) \(model.displayName(profile))", systemImage: "arrow.triangle.branch")
                             .font(.callout)

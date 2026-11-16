@@ -11,6 +11,8 @@ struct RootView: View {
                 Label(section.title, systemImage: section.icon).tag(section)
             }
             .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 240)
+            // Зазор между заголовком окна и подсветкой выбранной вкладки.
+            .contentMargins(.top, 8, for: .scrollContent)
         } detail: {
             VStack(spacing: 0) {
                 if let error = model.loadError {
