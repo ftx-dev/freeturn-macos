@@ -70,14 +70,17 @@ struct RootView: View {
                 }
                 // Открытый однажды раздел остаётся жить: формы «Серверов» и «Маршрутов» собираются
                 // 200-350 мс, и пересобирать их на каждом переключении - это и была задержка.
-                // Скрытые разделы получают замороженный размер: при сворачивании боковой панели
-                // и растягивании окна каждый кадр пересчитывается только видимый раздел -
-                // иначе анимация панели шла рывками (раскладывались все шесть разделов).
+                // Скрытые разделы получают замороженный размер (см. ниже): при сворачивании боковой панели
+                // каждый кадр пересчитывается только видимый раздел - иначе анимация шла рывками.
                 ZStack(alignment: .topLeading) {
                     ForEach(AppSection.allCases.filter(visited.contains)) { section in
                         let current = section == model.section
                         page(section)
-                            .frame(width: current ? nil : max(frozenSize.width, 1), height: current ? nil : max(frozenSize.height, 1))
+                            // Скрытый раздел раскладывается в замороженном размере, а наружу отдаёт ноль:
+                            // на размер области влияет только видимый, скрытые не пересчитываются на каждом кадре.
+                            .frame(width: current ? nil : max(frozenSize.width, 1), height: current ? nil : max(frozenSize.height, 1),
+                                   alignment: .topLeading)
+                            .frame(width: current ? nil : 0, height: current ? nil : 0, alignment: .topLeading)
                             .frame(maxWidth: current ? .infinity : nil, maxHeight: current ? .infinity : nil)
                             .opacity(current ? 1 : 0)
                             .allowsHitTesting(current)
