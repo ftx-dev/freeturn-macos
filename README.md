@@ -2,6 +2,8 @@
 
 Нативный клиент [free-turn-proxy](https://github.com/hackdiaz-dev/free-turn-proxy) для macOS (клиент для Windows — [freeturn-win](https://github.com/huhhuh78787878-collab/freeturn-win)): системный VPN (WireGuard / AmneziaWG) через TURN-релей или напрямую, с маршрутизацией по приложениям, доменам и подсетям.
 
+Новости и обновления - в [Telegram-канале](https://t.me/+ZVdbpZB0w_Q1MTdi).
+
 ## Скриншоты
 
 | Главная | Серверы |
