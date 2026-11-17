@@ -34,6 +34,10 @@ struct MenuBarView: View {
             Divider()
             VStack(spacing: 0) {
                 MenuRow(L("Открыть FreeTurnX"), systemImage: "macwindow") { openMain() }
+                // Окно только прячется (не закрывается): «Открыть FreeTurnX» возвращает его как было.
+                MenuRow(L("Скрыть окно"), systemImage: "eye.slash") {
+                    NSApp.windows.first { $0.identifier?.rawValue == "main" }?.orderOut(nil)
+                }
                 MenuRow(model.settings.compactWindow ? L("Обычное окно") : L("Компактное окно"),
                         systemImage: model.settings.compactWindow ? "rectangle.split.2x1" : "rectangle.portrait") {
                     model.settings.compactWindow.toggle()
