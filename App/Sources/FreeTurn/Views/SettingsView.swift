@@ -129,6 +129,10 @@ struct SettingsView: View {
                 }
             }
 
+            Section(L("Экспериментальное")) {
+                Socks5ClientRow()
+            }
+
             Section(L("Отладка")) {
                 Toggle(L("Показывать отладочную информацию"), isOn: $model.settings.debugScreen)
                 if model.settings.debugScreen {

@@ -1,0 +1,38 @@
+# Тег vX.Y.Z (= CFBundleShortVersionString) -> DMG для arm64 и x86_64 и SHA256SUMS.txt в GitHub Release.
+# Автообновление в приложении берёт DMG под свой процессор и сверяет его с SHA256SUMS.txt.
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: helper/go.mod
+          cache-dependency-path: helper/go.sum
+      - name: Check tag matches app version
+        run: |
+          V=$(plutil -extract CFBundleShortVersionString raw App/Bundle/Info.plist)
+          test "v$V" = "$GITHUB_REF_NAME" || { echo "тег $GITHUB_REF_NAME, а версия приложения v$V"; exit 1; }
+      - name: Tests
+        run: make test SWIFT_TEST_FLAGS=
+      - name: DMG
+        run: make dmg
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" --title "FreeTurnX $V" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" build/FreeTurn-*-arm64.dmg build/FreeTurn-*-x86_64.dmg build/SHA256SUMS.txt --clobber

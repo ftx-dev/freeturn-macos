@@ -304,3 +304,16 @@
 "Назад" = "Back";
 "Действия" = "Actions";
 "Стек" = "Stack";
+"Экспериментальное" = "Experimental";
+"SOCKS5-клиент" = "SOCKS5 client";
+"Подключить…" = "Connect…";
+"Недоступен, пока работает основное подключение." = "Unavailable while the main connection is on.";
+"Весь трафик Mac - через SOCKS5, например через SOCKS5 Hotspot телефона с FreeTurn." = "All Mac traffic through a SOCKS5 proxy, e.g. SOCKS5 Hotspot on a phone with FreeTurn.";
+"Подключено через %@" = "Connected via %@";
+"Не удалось: %@" = "Failed: %@";
+"Движок завершился с кодом %d" = "Engine exited with code %d";
+"Служба занята: сначала отключите основное подключение." = "The service is busy: turn off the main connection first.";
+"Подключите Mac к Wi-Fi телефона, где включён SOCKS5 Hotspot. Адрес подставлен из шлюза сети." = "Join the Wi-Fi of a phone with SOCKS5 Hotspot on. The address is prefilled from the network gateway.";
+"Порт" = "Port";
+"Логин (необязательно)" = "Username (optional)";
+"Взять шлюз сети" = "Use network gateway";
