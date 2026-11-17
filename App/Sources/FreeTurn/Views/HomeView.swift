@@ -3,6 +3,7 @@ import FreeTurnKit
 
 struct HomeView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.compactLayout) private var compact
 
     private var state: ConnectionState { model.connection.state }
 
@@ -66,6 +67,8 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity)
                 .padding(24)
             }
+            // В компактном окне полоса прокрутки справа только мешает - главная почти всегда влезает.
+            .scrollIndicators(compact ? .hidden : .automatic)
         }
     }
 
