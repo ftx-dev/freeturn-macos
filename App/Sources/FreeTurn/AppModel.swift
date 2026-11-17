@@ -192,6 +192,8 @@ final class AppModel {
     }
 
     func toggleConnection() {
+        // SOCKS5-клиент показывается как подключение: кнопка и переключатель гасят его.
+        if Socks5Client.shared.isActive { Socks5Client.shared.disconnect(); return }
         Task {
             if connection.state.isActive {
                 // Выключил сам - при следующем запуске не восстанавливаем.
@@ -205,7 +207,8 @@ final class AppModel {
     }
 
     func connect() async {
-        guard let server = activeServer else { return }
+        // Пока работает SOCKS5-клиент, основное подключение не запускается (и наоборот).
+        guard let server = activeServer, !Socks5Client.shared.isActive else { return }
         // Экранный лог - про текущую сессию; файл на диске хранит и прошлые.
         logs.clear()
         let clientId = (try? store.ownClientId()) ?? ""

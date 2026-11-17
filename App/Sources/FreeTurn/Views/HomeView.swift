@@ -7,8 +7,14 @@ struct HomeView: View {
 
     private var state: ConnectionState { model.connection.state }
 
+    private var socks: Socks5Client.State? {
+        let s = Socks5Client.shared.state
+        return Socks5Client.shared.isActive ? s : nil
+    }
+
     private var kind: ConnectButton.Kind {
-        switch state {
+        if let socks { return socks == .starting ? .busy : .on }
+        return switch state {
         case .off: .off
         case .starting, .connecting, .stopping: .busy
         case .captcha: .attention
@@ -18,7 +24,8 @@ struct HomeView: View {
     }
 
     private var title: String {
-        switch state {
+        if let socks { return socks == .starting ? L("Подключение…") : L("Подключено") }
+        return switch state {
         case .off: L("Нажмите для подключения")
         case .starting: L("Запуск…")
         case .connecting: L("Подключение…")
@@ -48,7 +55,11 @@ struct HomeView: View {
                     // Заголовок и строка сервера - одной группой, чуть ниже свечения кнопки.
                     VStack(spacing: 8) {
                         Text(title).font(.title2.weight(.semibold))
-                        serverLine
+                        if case let .on(address)? = socks {
+                            Label("SOCKS5 · \(address)", systemImage: "network").foregroundStyle(.secondary)
+                        } else {
+                            serverLine
+                        }
                     }
                     .padding(.top, 14)
                     if model.captchaNeedsAttention {

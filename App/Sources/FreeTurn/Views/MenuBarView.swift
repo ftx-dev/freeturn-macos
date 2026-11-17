@@ -66,9 +66,9 @@ struct MenuBarView: View {
                 }
             }
             Spacer(minLength: 8)
-            Toggle("", isOn: Binding(get: { state.isActive }, set: { _ in model.toggleConnection() }))
+            Toggle("", isOn: Binding(get: { state.isActive || Socks5Client.shared.isActive }, set: { _ in model.toggleConnection() }))
                 .toggleStyle(.switch).labelsHidden()
-                .disabled(model.activeServer == nil || state == .stopping)
+                .disabled((model.activeServer == nil && !Socks5Client.shared.isActive) || state == .stopping)
                 .accessibilityLabel(state.isActive ? L("Отключить") : L("Подключить"))
         }
         .padding(.horizontal, 14).padding(.vertical, 12)
@@ -165,7 +165,12 @@ struct MenuBarView: View {
     }
 
     private var statusText: String {
-        switch state {
+        switch Socks5Client.shared.state {
+        case .starting: return L("Подключение…")
+        case let .on(address): return "\(L("Подключено")) · SOCKS5 \(address)"
+        default: break
+        }
+        return switch state {
         case .off: L("Отключено")
         case .starting: L("Запуск…")
         case .connecting: L("Подключение…")
@@ -177,7 +182,8 @@ struct MenuBarView: View {
     }
 
     private var statusColor: Color {
-        switch state {
+        if Socks5Client.shared.isActive { return Socks5Client.shared.state == .starting ? .yellow : .green }
+        return switch state {
         case .connected: .green
         case .starting, .connecting, .stopping: .yellow
         case .captcha: .orange
