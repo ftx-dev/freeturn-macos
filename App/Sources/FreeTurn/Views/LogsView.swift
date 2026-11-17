@@ -25,6 +25,14 @@ struct LogsView: View {
         }
     }
 
+    private static var levelTitles: [(LogLevel, String)] {
+        [(.debug, L("Все")), (.info, L("Инфо и выше")), (.warn, L("Предупреждения и ошибки")), (.error, L("Только ошибки"))]
+    }
+
+    private static var sourceTitles: [(LogSource?, String)] {
+        [(nil, L("Все источники")), (.core, L("Ядро")), (.engine, L("Движок")), (.app, L("Приложение"))]
+    }
+
     private var levelPicker: some View {
         Picker(L("Уровень"), selection: $minLevel) {
             Text(L("Все")).tag(LogLevel.debug)
@@ -67,7 +75,18 @@ struct LogsView: View {
             Group {
                 if compact {
                     VStack(spacing: 8) {
-                        HStack(spacing: 8) { levelPicker; sourcePicker }
+                        // У выпадающих списков macOS свой внутренний отступ - компенсируем, чтобы края
+                        // совпали с полем поиска слева и кнопкой «Очистить» справа.
+                        // Свои кнопки-меню вместо системных списков: у тех свой внутренний отступ,
+                        // и края не совпадали с полем поиска и кнопкой «Очистить».
+                        HStack(spacing: 8) {
+                            FilterMenu(title: Self.levelTitles.first { $0.0 == minLevel }?.1 ?? "") {
+                                ForEach(Self.levelTitles, id: \.0) { level, title in Button(title) { minLevel = level } }
+                            }
+                            FilterMenu(title: Self.sourceTitles.first { $0.0 == source }?.1 ?? "") {
+                                ForEach(Self.sourceTitles, id: \.1) { value, title in Button(title) { source = value } }
+                            }
+                        }
                         HStack(spacing: 8) { searchField; actions(lines) }
                     }
                 } else {
@@ -123,5 +142,31 @@ struct LogsView: View {
         panel.nameFieldStringValue = "freeturn-log.txt"
         guard panel.runModal() == .OK, let url = panel.url else { return }
         try? model.logFile.export(to: url)
+    }
+}
+
+/// Кнопка-меню фильтра в узкой раскладке: форма как у поля поиска, края - вровень с ним.
+private struct FilterMenu<Items: View>: View {
+    let title: String
+    @ViewBuilder let items: () -> Items
+
+    var body: some View {
+        Menu {
+            items()
+        } label: {
+            HStack(spacing: 4) {
+                Text(title).lineLimit(1)
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.up.chevron.down").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 8)
+            .frame(height: 26)
+            .frame(maxWidth: .infinity)
+            .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
     }
 }

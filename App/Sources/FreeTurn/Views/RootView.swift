@@ -92,6 +92,20 @@ struct RootView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
+                // Кнопка сжатия - на соседнем после разделов элементе: SwiftUI ставит кнопки в порядке
+                // разметки, так «+» серверов и маршрутов оказывается слева от неё, а она - справа с краю.
+                Color.clear.frame(height: 0)
+                    .toolbar {
+                        ToolbarItem {
+                            Button {
+                                model.settings.compactWindow = true
+                                model.persist()
+                            } label: {
+                                Label(L("Компактное окно"), systemImage: "arrow.down.right.and.arrow.up.left")
+                            }
+                            .help(L("Компактное окно"))
+                        }
+                    }
                 // Размер для скрытых разделов обновляется только при переключении вкладки: в анимации
                 // боковой панели скрытые не пересчитываются вовсе - ни на каждом кадре, ни разом в конце.
                 .onGeometryChange(for: CGSize.self) { $0.size } action: { liveSize.size = $0 }
