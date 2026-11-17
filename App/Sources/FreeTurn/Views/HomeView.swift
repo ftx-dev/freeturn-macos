@@ -162,7 +162,7 @@ private struct StatsGrid: View {
                 StatTile(title: L("Загрузка"), value: Formatters.rate(stats.rxRate, style: style), icon: "arrow.down")
                 StatTile(title: L("Отдача"), value: Formatters.rate(stats.txRate, style: style), icon: "arrow.up")
                 TimelineView(.periodic(from: .now, by: 1)) { context in
-                    StatTile(title: L("Время сессии"),
+                    StatTile(title: L("Аптайм"),
                              value: Formatters.duration(context.date.timeIntervalSince(model.connection.connectedSince ?? context.date)),
                              icon: "clock")
                 }
@@ -188,7 +188,7 @@ struct StatTile: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label(title, systemImage: icon).font(.caption).foregroundStyle(.secondary)
+            Label(title, systemImage: icon).font(.caption).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
             Text(value).font(.title3.weight(.semibold).monospacedDigit()).lineLimit(1).minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
