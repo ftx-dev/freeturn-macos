@@ -47,6 +47,17 @@ func TestAcceptsGeneratedShape(t *testing.T) {
 	}
 }
 
+func TestAcceptsSocks5Client(t *testing.T) {
+	// Эталон - Socks5ClientConfig.engineConfig (SOCKS5-клиент, раздел «Экспериментальное»).
+	raw, err := os.ReadFile("testdata/socks5.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Sanitize(raw); err != nil {
+		t.Fatalf("socks5 client config rejected: %v", err)
+	}
+}
+
 func TestAcceptsMinimalWithProcessRules(t *testing.T) {
 	if _, err := Sanitize([]byte(minimal)); err != nil {
 		t.Fatal(err)
@@ -107,7 +118,7 @@ func TestRejectsForeignTypes(t *testing.T) {
 		c["inbounds"] = []any{map[string]any{"type": "mixed", "listen": "0.0.0.0", "listen_port": 1080}}
 	}), "inbound")
 	mustReject(t, edit(t, func(c map[string]any) {
-		c["outbounds"] = []any{map[string]any{"type": "socks", "server": "1.2.3.4"}}
+		c["outbounds"] = []any{map[string]any{"type": "shadowsocks", "server": "1.2.3.4"}}
 	}), "outbound")
 	mustReject(t, edit(t, func(c map[string]any) {
 		c["endpoints"] = []any{map[string]any{"type": "tailscale"}}

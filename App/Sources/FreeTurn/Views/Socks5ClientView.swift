@@ -30,9 +30,17 @@ final class Socks5Client {
         }
         Task {
             do {
+                // Старая служба не знает конфиг SOCKS5 - просим её обновить, а не показываем ошибку конфига.
+                let status = try await daemon.status()
+                guard status.version == DaemonProtocol.version else {
+                    finish(.failed(L("Служба устарела: переустановите её в Настройках → Фоновая служба.")))
+                    return
+                }
                 let engine = try config.engineConfig(mtu: CoreConfig.tunnelMTU, debug: debug)
                 try await daemon.start(config: engine)
                 if self.daemon === daemon { state = .on(config.address) }
+            } catch DaemonError.notInstalled {
+                finish(.failed(L("Фоновая служба не установлена.")))
             } catch DaemonError.busy {
                 finish(.failed(L("Служба занята: сначала отключите основное подключение.")))
             } catch {

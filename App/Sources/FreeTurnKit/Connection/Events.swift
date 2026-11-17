@@ -135,7 +135,7 @@ public enum DaemonError: Error, Equatable, Sendable {
 
 public enum DaemonProtocol {
     /// Должна совпадать с daemon.ProtocolVersion в helper/internal/daemon/server.go.
-    public static let version = "1"
+    public static let version = "2"
     public static let socketPath = "/var/run/freeturnd.sock"
 }
 

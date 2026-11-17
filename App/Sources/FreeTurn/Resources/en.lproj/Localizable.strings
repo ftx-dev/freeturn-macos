@@ -322,3 +322,5 @@
 "Отменить" = "Cancel";
 "Загрузка: %@ из %@ МБ" = "Downloading: %@ of %@ MB";
 "Установка… Приложение перезапустится." = "Installing… The app will restart.";
+"Служба устарела: переустановите её в Настройках → Фоновая служба." = "The service is outdated: reinstall it in Settings → Background service.";
+"Фоновая служба не установлена." = "The background service is not installed.";
