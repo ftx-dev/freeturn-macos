@@ -135,7 +135,13 @@ struct SettingsView: View {
                     LabeledContent(L("Приложение"), value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev")
                     LabeledContent(L("Ядро"), value: model.connection.coreVersion.isEmpty ? AppInfo.coreVersion : model.connection.coreVersion)
                     LabeledContent(L("Движок"), value: "Amnezia Box \(AppInfo.engineVersion)")
-                    LabeledContent(L("Каталог данных"), value: model.store.directory.path)
+                    // Длинный путь - под подписью слева, как команда запуска ядра; домашняя папка - «~».
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(L("Каталог данных")).font(.caption).foregroundStyle(.secondary)
+                        Text((model.store.directory.path as NSString).abbreviatingWithTildeInPath)
+                            .font(.system(.caption, design: .monospaced))
+                            .textSelection(.enabled)
+                    }
                     if !model.connection.launchArgs.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(L("Команда запуска ядра")).font(.caption).foregroundStyle(.secondary)
