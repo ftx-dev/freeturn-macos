@@ -317,3 +317,8 @@
 "Порт" = "Port";
 "Логин (необязательно)" = "Username (optional)";
 "Взять шлюз сети" = "Use network gateway";
+"Обновление до %@" = "Updating to %@";
+"Закрыть" = "Close";
+"Отменить" = "Cancel";
+"Загрузка: %@ из %@ МБ" = "Downloading: %@ of %@ MB";
+"Установка… Приложение перезапустится." = "Installing… The app will restart.";

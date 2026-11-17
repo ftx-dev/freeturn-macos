@@ -294,7 +294,7 @@ final class AppModel {
     }
 
     func installUpdate(_ update: AvailableUpdate) {
-        Task { await updater.install(update) { await self.connection.disconnect() } }
+        updater.start(update) { await self.connection.disconnect() }
     }
 
     /// Удаляет данные приложения. Только свои файлы поимённо: каталог может быть задан снаружи.

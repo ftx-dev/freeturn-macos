@@ -108,3 +108,59 @@ struct MarkdownText: View {
         return Text(text)
     }
 }
+
+/// Окно установки обновления: прогресс загрузки с отменой, затем установка и перезапуск.
+struct UpdateProgressSheet: View {
+    @Environment(AppModel.self) private var model
+    private var updater: Updater { model.updater }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                Image(nsImage: AppIcons.image(model.settings.appIcon)).resizable().frame(width: 44, height: 44)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(String(format: L("Обновление до %@"), updater.installing?.version ?? "")).font(.title3.weight(.semibold))
+                    Text(status).font(.callout).foregroundStyle(failure == nil ? .secondary : Color.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            if failure == nil {
+                if updater.phase == .downloading, updater.expected > 0 {
+                    ProgressView(value: Double(updater.received), total: Double(updater.expected))
+                } else {
+                    ProgressView().progressViewStyle(.linear)
+                }
+            }
+            HStack {
+                Spacer()
+                if failure != nil {
+                    Button(L("Закрыть")) { updater.dismissFailure() }.keyboardShortcut(.defaultAction)
+                } else {
+                    Button(L("Отменить")) { updater.cancel() }
+                        .keyboardShortcut(.cancelAction)
+                        .disabled(updater.phase != .downloading)
+                }
+            }
+        }
+        .padding(22)
+        .frame(width: 420)
+        .interactiveDismissDisabled()
+    }
+
+    private var failure: String? {
+        if case let .failed(text) = updater.phase { return text }
+        return nil
+    }
+
+    private var status: String {
+        if let failure { return failure }
+        switch updater.phase {
+        case .downloading:
+            guard updater.expected > 0 else { return L("Загрузка…") }
+            let mb = { (bytes: Int64) in String(format: "%.1f", Double(bytes) / 1_048_576) }
+            return String(format: L("Загрузка: %@ из %@ МБ"), mb(updater.received), mb(updater.expected))
+        default:
+            return L("Установка… Приложение перезапустится.")
+        }
+    }
+}

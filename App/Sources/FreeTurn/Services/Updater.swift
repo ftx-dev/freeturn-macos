@@ -12,6 +12,12 @@ final class Updater {
     }
 
     private(set) var phase: Phase = .idle
+    /// Обновление, которое ставится сейчас: пока не nil, открыто окно с прогрессом.
+    private(set) var installing: AvailableUpdate?
+    /// Скачано и всего байт (всего 0 - размер неизвестен).
+    private(set) var received: Int64 = 0
+    private(set) var expected: Int64 = 0
+    @ObservationIgnored private var job: Task<Void, Never>?
     var currentVersion: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0" }
 
     var available: AvailableUpdate? {
@@ -39,15 +45,38 @@ final class Updater {
         }
     }
 
+    /// Запускает установку в фоне; окно прогресса следит за [installing].
+    func start(_ update: AvailableUpdate, beforeQuit: @escaping () async -> Void) {
+        guard installing == nil else { return }
+        installing = update
+        job = Task { await install(update, beforeQuit: beforeQuit) }
+    }
+
+    /// Отмена, пока идёт загрузка: обновление снова предлагается.
+    func cancel() {
+        guard phase == .downloading, let update = installing else { return }
+        job?.cancel()
+        job = nil
+        installing = nil
+        phase = .available(update)
+    }
+
+    /// Закрыть окно после ошибки.
+    func dismissFailure() {
+        installing = nil
+    }
+
     /// Скачивает и ставит обновление; beforeQuit - отключить VPN перед выходом.
-    func install(_ update: AvailableUpdate, beforeQuit: @escaping () async -> Void) async {
+    private func install(_ update: AvailableUpdate, beforeQuit: @escaping () async -> Void) async {
         phase = .downloading
+        received = 0
+        expected = 0
         do {
             let target = Bundle.main.bundleURL
             guard FileManager.default.isWritableFile(atPath: target.deletingLastPathComponent().path) else {
                 throw UpdateError.message(L("Нет прав на запись в папку приложения. Скачайте DMG со страницы релиза."))
             }
-            let dmg = try await download(update.dmgURL)
+            let dmg = try await download(update.dmgURL, progress: true)
             // Без контрольной суммы не ставим: DMG без подписи разработчика иначе ничем не проверить.
             guard let sumsURL = update.checksumsURL,
                   let sums = String(data: try Data(contentsOf: try await download(sumsURL)), encoding: .utf8),
@@ -55,6 +84,7 @@ final class Updater {
                   try UpdateCheck.sha256(of: dmg) == expected
             else { throw UpdateError.message(L("Контрольная сумма обновления не совпала — установка отменена.")) }
 
+            try Task.checkCancellation()
             phase = .installing
             let mount = FileManager.default.temporaryDirectory.appendingPathComponent("freeturn-update-\(UUID().uuidString)")
             try run("/usr/bin/hdiutil", ["attach", dmg.path, "-nobrowse", "-readonly", "-mountpoint", mount.path])
@@ -68,6 +98,8 @@ final class Updater {
             try launchSwapScript(newApp: newApp, mount: mount, target: target)
             await beforeQuit()
             NSApp.terminate(nil)
+        } catch is CancellationError {
+            // Отменил пользователь: состояние уже вернул cancel().
         } catch let UpdateError.message(text) {
             phase = .failed(text)
         } catch {
@@ -77,11 +109,31 @@ final class Updater {
 
     private enum UpdateError: Error { case message(String) }
 
-    private func download(_ url: URL) async throws -> URL {
-        let (file, response) = try await URLSession.shared.download(from: url)
-        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw UpdateError.message(L("Не удалось скачать обновление.")) }
+    private func download(_ url: URL, progress: Bool = false) async throws -> URL {
         let kept = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + "-" + url.lastPathComponent)
-        try FileManager.default.moveItem(at: file, to: kept)
+        let delegate = DownloadDelegate(destination: kept) { [weak self] done, total in
+            guard progress else { return }
+            Task { @MainActor in
+                self?.received = done
+                self?.expected = max(total, 0)
+            }
+        }
+        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+        defer { session.finishTasksAndInvalidate() }
+        let task = session.downloadTask(with: url)
+        do {
+            try await withTaskCancellationHandler {
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                    delegate.continuation = continuation
+                    task.resume()
+                }
+            } onCancel: {
+                task.cancel()
+            }
+        } catch {
+            if Task.isCancelled { throw CancellationError() }
+            throw UpdateError.message(L("Не удалось скачать обновление."))
+        }
         return kept
     }
 
@@ -130,4 +182,35 @@ final class Updater {
     }
 
     private func run(_ tool: String, _ args: [String]) throws { try output(tool, args) }
+}
+
+/// Загрузка с прогрессом: файл переносится в [destination] до того, как система его удалит.
+private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+    let destination: URL
+    let onProgress: @Sendable (Int64, Int64) -> Void
+    var continuation: CheckedContinuation<Void, Error>?
+    private var moveError: Error?
+
+    init(destination: URL, onProgress: @escaping @Sendable (Int64, Int64) -> Void) {
+        self.destination = destination
+        self.onProgress = onProgress
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64,
+                    totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+        onProgress(totalBytesWritten, totalBytesExpectedToWrite)
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+        guard (downloadTask.response as? HTTPURLResponse)?.statusCode == 200 else {
+            moveError = URLError(.badServerResponse)
+            return
+        }
+        do { try FileManager.default.moveItem(at: location, to: destination) } catch { moveError = error }
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        if let error = error ?? moveError { continuation?.resume(throwing: error) } else { continuation?.resume() }
+        continuation = nil
+    }
 }
