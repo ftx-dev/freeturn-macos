@@ -308,15 +308,12 @@
 "SOCKS5-клиент" = "SOCKS5 client";
 "Подключить…" = "Connect…";
 "Недоступен, пока работает основное подключение." = "Unavailable while the main connection is on.";
-"Весь трафик Mac - через SOCKS5, например через SOCKS5 Hotspot телефона с FreeTurn." = "All Mac traffic through a SOCKS5 proxy, e.g. SOCKS5 Hotspot on a phone with FreeTurn.";
 "Подключено через %@" = "Connected via %@";
 "Не удалось: %@" = "Failed: %@";
 "Движок завершился с кодом %d" = "Engine exited with code %d";
 "Служба занята: сначала отключите основное подключение." = "The service is busy: turn off the main connection first.";
-"Подключите Mac к Wi-Fi телефона, где включён SOCKS5 Hotspot. Адрес подставлен из шлюза сети." = "Join the Wi-Fi of a phone with SOCKS5 Hotspot on. The address is prefilled from the network gateway.";
 "Порт" = "Port";
 "Логин (необязательно)" = "Username (optional)";
-"Взять шлюз сети" = "Use network gateway";
 "Обновление до %@" = "Updating to %@";
 "Закрыть" = "Close";
 "Отменить" = "Cancel";
@@ -324,3 +321,5 @@
 "Установка… Приложение перезапустится." = "Installing… The app will restart.";
 "Служба устарела: переустановите её в Настройках → Фоновая служба." = "The service is outdated: reinstall it in Settings → Background service.";
 "Фоновая служба не установлена." = "The background service is not installed.";
+"Mac и телефон с включённым SOCKS5 Hotspot должны быть в одной Wi-Fi сети; адрес - из QR SOCKS5 Hotspot на телефоне. Если Mac подключён к точке доступа телефона, включите на телефоне «Раздачу через Shizuku» - SOCKS5 не нужен." = "The Mac and the phone with SOCKS5 Hotspot on must be on the same Wi-Fi network; take the address from the SOCKS5 Hotspot QR on the phone. If the Mac is on the phone's own hotspot, turn on Shizuku sharing on the phone instead - no SOCKS5 needed.";
+"Весь трафик Mac - через SOCKS5, например через SOCKS5 Hotspot телефона в той же Wi-Fi сети." = "All Mac traffic through a SOCKS5 proxy, e.g. SOCKS5 Hotspot on a phone on the same Wi-Fi network.";

@@ -36,6 +36,11 @@ final class Socks5Client {
                     finish(.failed(L("Служба устарела: переустановите её в Настройках → Фоновая служба.")))
                     return
                 }
+                // Прокси должен ответить по SOCKS5 - иначе честная ошибка, а не «Подключено» без интернета.
+                if let problem = await Task.detached(operation: { Socks5Probe.check(config) }).value {
+                    finish(.failed(problem))
+                    return
+                }
                 let engine = try config.engineConfig(mtu: CoreConfig.tunnelMTU, debug: debug)
                 try await daemon.start(config: engine)
                 if self.daemon === daemon { state = .on(config.address) }
@@ -88,7 +93,7 @@ struct Socks5ClientRow: View {
         case .off:
             model.connection.state.isActive
                 ? L("Недоступен, пока работает основное подключение.")
-                : L("Весь трафик Mac - через SOCKS5, например через SOCKS5 Hotspot телефона с FreeTurn.")
+                : L("Весь трафик Mac - через SOCKS5, например через SOCKS5 Hotspot телефона в той же Wi-Fi сети.")
         case .starting: L("Подключение…")
         case let .on(address): String(format: L("Подключено через %@"), address)
         case let .failed(reason): String(format: L("Не удалось: %@"), reason)
@@ -105,7 +110,7 @@ private struct Socks5ClientSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(L("SOCKS5-клиент")).font(.title2.weight(.semibold))
-            Text(L("Подключите Mac к Wi-Fi телефона, где включён SOCKS5 Hotspot. Адрес подставлен из шлюза сети."))
+            Text(L("Mac и телефон с включённым SOCKS5 Hotspot должны быть в одной Wi-Fi сети; адрес - из QR SOCKS5 Hotspot на телефоне. Если Mac подключён к точке доступа телефона, включите на телефоне «Раздачу через Shizuku» - SOCKS5 не нужен."))
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Form {
                 TextField(L("Адрес"), text: $config.host)
@@ -114,7 +119,6 @@ private struct Socks5ClientSheet: View {
                 SecureField(L("Пароль"), text: $config.password)
             }
             HStack {
-                Button(L("Взять шлюз сети")) { config.host = Socks5ClientConfig.defaultGateway() ?? config.host }
                 Spacer()
                 Button(L("Отмена"), role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
                 Button(L("Подключить")) {
