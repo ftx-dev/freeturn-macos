@@ -145,6 +145,24 @@ public struct ServersFile: Codable, Equatable, Sendable {
 }
 
 extension ServersFile {
+    @discardableResult
+    public mutating func enforceStreamLimits(_ settings: AppSettings) -> Bool {
+        let maxStreams = settings.maxStreams
+        let maxStreamsPerCred = settings.maxStreamsPerCred
+        var changed = false
+        for i in list.indices {
+            if list[i].client.threads > maxStreams {
+                list[i].client.threads = maxStreams
+                changed = true
+            }
+            if list[i].client.streamsPerCred > maxStreamsPerCred {
+                list[i].client.streamsPerCred = maxStreamsPerCred
+                changed = true
+            }
+        }
+        return changed
+    }
+
     public mutating func add(_ server: Server, activate: Bool) {
         list.append(server)
         if activate || active == nil { activeId = server.id }

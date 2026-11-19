@@ -43,8 +43,10 @@ struct RootView: View {
         } message: {
             Text(L("Подпишитесь на Telegram-канал, чтобы первыми узнавать о новых версиях."))
         }
-        .sheet(item: $model.offerUpdate) { UpdateSheet(update: $0) }
-        .sheet(isPresented: Binding(get: { model.updater.installing != nil }, set: { _ in })) { UpdateProgressSheet() }
+        .sheet(isPresented: Binding(
+            get: { model.offerUpdate != nil || model.updater.installing != nil },
+            set: { if !$0 { model.offerUpdate = nil } }
+        )) { UpdateSheet() }
         .alert(L("Ошибка импорта"), isPresented: Binding(get: { model.importError != nil }, set: { if !$0 { model.importError = nil } })) {
             Button(L("Понятно"), role: .cancel) {}
         } message: {

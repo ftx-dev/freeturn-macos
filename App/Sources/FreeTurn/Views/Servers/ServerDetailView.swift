@@ -49,9 +49,10 @@ struct ServerDetailView: View {
 
             if relay {
                 Section {
-                    Stepper(String(format: L("Потоки: %d"), s.wrappedValue.client.threads), value: s.client.threads, in: 1...24)
+                    Stepper(String(format: L("Потоки: %d"), s.wrappedValue.client.threads),
+                            value: s.client.threads, in: 1...model.settings.maxStreams)
                     Stepper(String(format: L("Потоков на аккаунт: %d"), s.wrappedValue.client.streamsPerCred),
-                            value: s.client.streamsPerCred, in: 1...24)
+                            value: s.client.streamsPerCred, in: 1...model.settings.maxStreamsPerCred)
                 } header: {
                     Text(L("Производительность"))
                 } footer: {

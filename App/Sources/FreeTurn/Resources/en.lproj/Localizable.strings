@@ -305,6 +305,7 @@
 "Действия" = "Actions";
 "Стек" = "Stack";
 "Экспериментальное" = "Experimental";
+"Увеличить ограничение на потоки (небезопасно)" = "Increase stream limits (unsafe)";
 "SOCKS5-клиент" = "SOCKS5 client";
 "Подключить…" = "Connect…";
 "Недоступен, пока работает основное подключение." = "Unavailable while the main connection is on.";

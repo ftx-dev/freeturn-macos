@@ -75,3 +75,27 @@ import Testing
     file.update(Server(name: "stranger"))
     #expect(file.list.count == 1)
 }
+
+@Test func streamLimitsClampAllSavedServersWhenTurnedOff() {
+    var active = Server(name: "A")
+    active.client.threads = 100
+    active.client.streamsPerCred = 50
+    var inactive = Server(name: "B")
+    inactive.client.threads = 30
+    inactive.client.streamsPerCred = 12
+    var file = ServersFile(list: [active, inactive], activeId: active.id)
+    var settings = AppSettings()
+    settings.increasedStreamLimits = true
+
+    let appliedIncreasedLimits = file.enforceStreamLimits(settings)
+    #expect(appliedIncreasedLimits)
+    #expect(file.list.map(\.client.threads) == [96, 30])
+    #expect(file.list.map(\.client.streamsPerCred) == [48, 12])
+
+    settings.increasedStreamLimits = false
+    let appliedStandardLimits = file.enforceStreamLimits(settings)
+    #expect(appliedStandardLimits)
+    #expect(file.list.map(\.client.threads) == [24, 24])
+    #expect(file.list.map(\.client.streamsPerCred) == [24, 12])
+    #expect(file.activeId == active.id)
+}

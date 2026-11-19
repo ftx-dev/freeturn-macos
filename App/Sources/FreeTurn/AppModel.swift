@@ -95,6 +95,7 @@ final class AppModel {
         routing = load(RoutingFile.self, "routing.json", routing).normalized()
         settings = load(AppSettings.self, "settings.json", settings)
         L10n.language = settings.language
+        if servers.enforceStreamLimits(settings) { save(servers, "servers.json") }
         // NSApp появляется только после запуска приложения, а модель создаётся раньше.
         let icon = settings.appIcon
         let menuBarOnly = settings.menuBarOnly
@@ -160,6 +161,7 @@ final class AppModel {
     }
 
     func persist() {
+        servers.enforceStreamLimits(settings)
         save(servers, "servers.json")
         save(routing, "routing.json")
         save(settings, "settings.json")
@@ -295,6 +297,7 @@ final class AppModel {
 
     func installUpdate(_ update: AvailableUpdate) {
         updater.start(update) { await self.connection.disconnect() }
+        offerUpdate = nil
     }
 
     /// Удаляет данные приложения. Только свои файлы поимённо: каталог может быть задан снаружи.

@@ -111,7 +111,7 @@ struct SettingsView: View {
                             .buttonStyle(.borderedProminent)
                     } else {
                         Button(L("Проверить сейчас")) { Task { await model.updater.check() } }
-                            .disabled(model.updater.phase == .checking)
+                            .disabled(model.updater.phase == .checking || model.updater.installing != nil)
                     }
                 }
             }
@@ -130,6 +130,7 @@ struct SettingsView: View {
             }
 
             Section(L("Экспериментальное")) {
+                Toggle(L("Увеличить ограничение на потоки (небезопасно)"), isOn: $model.settings.increasedStreamLimits)
                 Socks5ClientRow()
             }
 

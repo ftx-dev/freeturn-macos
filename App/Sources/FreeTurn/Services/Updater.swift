@@ -26,13 +26,14 @@ final class Updater {
     }
 
     func check() async {
-        guard phase != .checking, phase != .downloading, phase != .installing else { return }
+        guard phase != .checking, installing == nil else { return }
         phase = .checking
         var request = URLRequest(url: UpdateCheck.latestURL)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 15
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
+            guard phase == .checking else { return }
             // 404 - в репозитории ещё нет релизов.
             if (response as? HTTPURLResponse)?.statusCode == 404 { phase = .upToDate; return }
             if let update = try UpdateCheck.available(from: data, current: currentVersion, arch: UpdateCheck.currentArch) {
@@ -41,6 +42,7 @@ final class Updater {
                 phase = .upToDate
             }
         } catch {
+            guard phase == .checking else { return }
             phase = .failed(L("Не удалось проверить обновления."))
         }
     }
@@ -48,6 +50,9 @@ final class Updater {
     /// Запускает установку в фоне; окно прогресса следит за [installing].
     func start(_ update: AvailableUpdate, beforeQuit: @escaping () async -> Void) {
         guard installing == nil else { return }
+        received = 0
+        expected = 0
+        phase = .downloading
         installing = update
         job = Task { await install(update, beforeQuit: beforeQuit) }
     }
@@ -68,10 +73,8 @@ final class Updater {
 
     /// Скачивает и ставит обновление; beforeQuit - отключить VPN перед выходом.
     private func install(_ update: AvailableUpdate, beforeQuit: @escaping () async -> Void) async {
-        phase = .downloading
-        received = 0
-        expected = 0
         do {
+            try Task.checkCancellation()
             let target = Bundle.main.bundleURL
             guard FileManager.default.isWritableFile(atPath: target.deletingLastPathComponent().path) else {
                 throw UpdateError.message(L("Нет прав на запись в папку приложения. Скачайте DMG со страницы релиза."))

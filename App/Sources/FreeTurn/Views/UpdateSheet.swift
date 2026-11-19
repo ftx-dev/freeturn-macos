@@ -1,12 +1,20 @@
 import SwiftUI
 import FreeTurnKit
 
-extension AvailableUpdate: Identifiable {
-    public var id: String { version }
+struct UpdateSheet: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        if model.updater.installing != nil {
+            UpdateProgressSheet()
+        } else if let update = model.offerUpdate {
+            UpdateOfferView(update: update)
+        }
+    }
 }
 
 /// Предложение обновиться: заметки к релизу показываются с базовой разметкой Markdown.
-struct UpdateSheet: View {
+private struct UpdateOfferView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     let update: AvailableUpdate
@@ -32,7 +40,6 @@ struct UpdateSheet: View {
                 Spacer()
                 Button(L("Позже")) { dismiss() }.keyboardShortcut(.cancelAction)
                 Button(L("Обновить")) {
-                    dismiss()
                     model.installUpdate(update)
                 }
                 .keyboardShortcut(.defaultAction)
@@ -110,7 +117,7 @@ struct MarkdownText: View {
 }
 
 /// Окно установки обновления: прогресс загрузки с отменой, затем установка и перезапуск.
-struct UpdateProgressSheet: View {
+private struct UpdateProgressSheet: View {
     @Environment(AppModel.self) private var model
     private var updater: Updater { model.updater }
 

@@ -22,3 +22,11 @@ private func decodeSettings(_ json: String) throws -> AppSettings {
 @Test func unknownTunStackFallsBackToMixed() throws {
     #expect(try decodeSettings(#"{"tunStack":"lwip"}"#).tunStack == "mixed")
 }
+
+@Test func increasedStreamLimitsAreOptInAndPersisted() throws {
+    #expect(try !decodeSettings("{}").increasedStreamLimits)
+    var settings = AppSettings()
+    settings.increasedStreamLimits = true
+    let encoded = try JSONEncoder().encode(settings)
+    #expect(try JSONDecoder().decode(AppSettings.self, from: encoded).increasedStreamLimits)
+}
