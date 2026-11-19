@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 import FreeTurnKit
 import Observation
 
@@ -100,7 +101,9 @@ final class Updater {
             }
             try launchSwapScript(newApp: newApp, mount: mount, target: target)
             await beforeQuit()
-            NSApp.terminate(nil)
+            // Открытый лист прогресса может заблокировать NSApplication.terminate.
+            // VPN уже отключён, а установщик ждёт завершения этого процесса.
+            exit(EXIT_SUCCESS)
         } catch is CancellationError {
             // Отменил пользователь: состояние уже вернул cancel().
         } catch let UpdateError.message(text) {
