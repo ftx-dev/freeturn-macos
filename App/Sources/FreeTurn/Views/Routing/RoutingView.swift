@@ -277,8 +277,12 @@ private struct ProfileEditor: View {
         .padding(16)
         .sheet(item: $editing) { rule in
             RuleEditorView(rule: rule) { saved in
-                mutate { p in
-                    if let i = p.rules.firstIndex(where: { $0.id == saved.id }) { p.rules[i] = saved } else { p.rules.append(saved) }
+                mutate { profile in
+                    if let index = profile.rules.firstIndex(where: { $0.id == saved.id }) {
+                        profile.rules[index] = saved
+                    } else {
+                        profile.rules.insert(saved, at: 0)
+                    }
                 }
             }
         }
