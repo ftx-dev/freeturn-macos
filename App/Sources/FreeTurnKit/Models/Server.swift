@@ -51,7 +51,7 @@ public struct ClientConfig: Codable, Equatable, Sendable {
     public var tunnelTransport = TunnelTransport.none
     public var wireGuardConfig = ""
     public var clientId = ""
-    /// Только macOS: профиль маршрутов сервера; nil - общий профиль.
+    /// Только macOS: профиль маршрутов сервера; nil — профиль по умолчанию.
     public var routingProfileId: String?
 
     public init() {}

@@ -80,7 +80,6 @@
 "Некорректные адреса будут пропущены." = "Invalid addresses will be skipped.";
 "Новый сервер" = "New server";
 "Обфускация" = "Obfuscation";
-"Общий" = "Shared";
 "Остановите подключение, чтобы изменить этот сервер." = "Disconnect to edit this server.";
 "Отладка" = "Debug";
 "Отмена" = "Cancel";
@@ -139,16 +138,17 @@
 "Название профиля" = "Profile name";
 "Не удалось" = "Failed";
 "Новый профиль" = "New profile";
-"Общий профиль действует для серверов без собственного." = "The shared profile applies to servers without their own.";
 "Переподключить" = "Reconnect";
+"По умолчанию" = "Default";
 "Поиск приложений" = "Search apps";
 "Правил нет" = "No rules";
 "Правило" = "Rule";
 "Приложение" = "App";
 "Приложения не найдены" = "No apps found";
+"Профиль по умолчанию применяется к серверам, для которых не выбран отдельный профиль." = "The default profile applies to servers without a profile explicitly selected.";
 "Режим" = "Mode";
 "Российские сервисы напрямую" = "Russian services direct";
-"Сделать общим" = "Make shared";
+"Сделать профилем по умолчанию" = "Set as default";
 "Слово в домене" = "Keyword in domain";
 "Такое значение движок не примет." = "The engine will not accept this value.";
 "Тип туннеля" = "Tunnel type";
@@ -160,7 +160,6 @@
 "Экспорт…" = "Export…";
 "Это не файл профиля маршрутов FreeTurn." = "This is not a FreeTurn routing profile file.";
 "запущено" = "running";
-"общий" = "shared";
 "Проверка на робота" = "Robot check";
 "Пройдите проверку для продолжения. Окно закроется само." = "Complete the check to continue. The window will close by itself.";
 "Нужна проверка CAPTCHA" = "CAPTCHA check required";

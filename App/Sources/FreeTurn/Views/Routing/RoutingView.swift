@@ -79,14 +79,17 @@ struct RoutingView: View {
     }
 
     private func profileRow(_ profile: RoutingProfile) -> some View {
-        HStack {
+        HStack(alignment: .top) {
             Image(systemName: profile.builtIn ? "lock" : "arrow.triangle.branch")
                 .foregroundStyle(.secondary).frame(width: 20)
-            Text(model.displayName(profile))
-            Spacer()
-            if profile.id == model.routing.sharedProfileId {
-                Text(L("общий")).font(.caption).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(model.displayName(profile))
+                if profile.id == model.routing.sharedProfileId {
+                    Text(L("По умолчанию")).font(.caption).foregroundStyle(.secondary)
+                }
             }
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.vertical, 3)
     }
@@ -173,7 +176,7 @@ private struct ProfileEditor: View {
                     .labelsHidden()
                     .disabled(profile.builtIn)
                     Menu {
-                        Button(L("Сделать общим")) { model.routing.sharedProfileId = profileId; model.persist() }
+                        Button(L("Сделать профилем по умолчанию")) { model.routing.sharedProfileId = profileId; model.persist() }
                             .disabled(model.routing.sharedProfileId == profileId)
                         Button(L("Клонировать")) {
                             if let copy = model.routing.clone(id: profileId) { model.persist(); selectedId = copy.id }
@@ -202,9 +205,10 @@ private struct ProfileEditor: View {
             .disabled(profile.builtIn)
 
             HStack {
-                Button(L("Сделать общим")) { model.routing.sharedProfileId = profileId; model.persist() }
+                Button(L("Сделать профилем по умолчанию")) { model.routing.sharedProfileId = profileId; model.persist() }
+                    .fixedSize()
                     .disabled(model.routing.sharedProfileId == profileId)
-                    .help(L("Общий профиль действует для серверов без собственного."))
+                    .help(L("Профиль по умолчанию применяется к серверам, для которых не выбран отдельный профиль."))
                 Button(L("Клонировать")) {
                     if let copy = model.routing.clone(id: profileId) { model.persist(); selectedId = copy.id }
                 }
