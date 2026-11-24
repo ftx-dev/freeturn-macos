@@ -31,19 +31,23 @@ public enum EngineConfig {
 
     public static func build(wg: WGConfig, corePort: Int, profile: RoutingProfile,
                              settings: EngineSettings) throws -> String {
-        let hasV6 = wg.addresses.contains { $0.contains(":") }
+        let hasV6Address = wg.addresses.contains { $0.contains(":") }
+        let supportsV6 = hasV6Address && wg.peers.contains { peer in
+            peer.allowedIPs.isEmpty || peer.allowedIPs.contains { $0.contains(":") }
+        }
         let matchers = try profile.rules.filter(\.enabled).map { ($0, try matcher(for: $0)) }
         let viaVPN = profile.defaultAction != .direct
 
         var tun: [String: Any] = [
             "type": "tun", "tag": "tun-in",
-            "address": ["172.19.0.1/30"] + (hasV6 ? ["fdfe:dcba:9876::1/126"] : []),
+            "address": ["172.19.0.1/30", "fdfe:dcba:9876::1/126"],
             "mtu": CoreConfig.tunnelMTU, "auto_route": true, "stack": settings.stack,
         ]
-        // AllowedIPs без 0.0.0.0/0 - в туннель попадают только эти сети.
-        let allowed = unique(wg.peers.flatMap(\.allowedIPs)).filter { hasV6 || !$0.contains(":") }
-        if !allowed.isEmpty, !allowed.contains("0.0.0.0/0") {
-            tun["route_address"] = allowed
+        // Ограничения AllowedIPs для IPv4 сохраняются. IPv6 всегда перехватывается:
+        // без явного диапазона для этой семьи TUN ставит маршруты для всего IPv6.
+        let allowedV4 = unique(wg.peers.flatMap(\.allowedIPs).filter { !$0.contains(":") })
+        if !allowedV4.isEmpty, !allowedV4.contains("0.0.0.0/0") {
+            tun["route_address"] = allowedV4
         }
 
         var dns: [String: Any] = [
@@ -60,10 +64,13 @@ public enum EngineConfig {
             },
             "final": viaVPN ? "vpn-dns" : "local-dns",
         ]
-        // Без IPv6 в туннеле AAAA-ответы уводили бы трафик мимо него.
-        if !hasV6 { dns["strategy"] = "ipv4_only" }
+        if !supportsV6 { dns["strategy"] = "ipv4_only" }
 
-        let base: [[String: Any]] = [
+        var base: [[String: Any]] = []
+        if !supportsV6 {
+            base.append(["ip_version": 6, "action": "reject"])
+        }
+        base += [
             ["action": "sniff"],
             ["protocol": "dns", "action": "hijack-dns"],
             ["ip_is_private": true, "outbound": "direct"],
@@ -76,7 +83,7 @@ public enum EngineConfig {
             "log": ["level": settings.debug ? "debug" : "info"],
             "dns": dns,
             "inbounds": [tun],
-            "endpoints": [endpoint(wg: wg, corePort: corePort, hasV6: hasV6)],
+            "endpoints": [endpoint(wg: wg, corePort: corePort, hasV6: hasV6Address)],
             "outbounds": [["type": "direct", "tag": "direct"]],
             "route": [
                 "auto_detect_interface": true,

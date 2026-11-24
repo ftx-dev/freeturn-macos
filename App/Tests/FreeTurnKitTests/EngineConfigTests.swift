@@ -43,7 +43,11 @@ private func engine(wg: String = plainWG, _ p: RoutingProfile = profile(),
 
 private func first(_ o: [String: Any], _ key: String) -> [String: Any] { (o[key] as! [[String: Any]])[0] }
 private func routeRules(_ o: [String: Any]) -> [[String: Any]] { (o["route"] as! [String: Any])["rules"] as! [[String: Any]] }
-private func userRules(_ o: [String: Any]) -> [[String: Any]] { Array(routeRules(o).dropFirst(3)) }
+private func userRules(_ o: [String: Any]) -> [[String: Any]] {
+    let rules = routeRules(o)
+    let baseCount = rules.first?["ip_version"] as? Int == 6 ? 4 : 3
+    return Array(rules.dropFirst(baseCount))
+}
 
 @Test func engineWireguardEndpoint() throws {
     let ep = first(try engine(), "endpoints")
@@ -84,10 +88,11 @@ private func userRules(_ o: [String: Any]) -> [[String: Any]] { Array(routeRules
 
 @Test func engineBaseRulesFirst() throws {
     let rules = routeRules(try engine(profile([rule(.domain, "a.com")])))
-    #expect(rules[0] as NSDictionary == ["action": "sniff"])
-    #expect(rules[1] as NSDictionary == ["protocol": "dns", "action": "hijack-dns"])
-    #expect(rules[2] as NSDictionary == ["ip_is_private": true, "outbound": "direct"])
-    #expect(rules.count == 4)
+    #expect(rules[0] as NSDictionary == ["ip_version": 6, "action": "reject"])
+    #expect(rules[1] as NSDictionary == ["action": "sniff"])
+    #expect(rules[2] as NSDictionary == ["protocol": "dns", "action": "hijack-dns"])
+    #expect(rules[3] as NSDictionary == ["ip_is_private": true, "outbound": "direct"])
+    #expect(rules.count == 5)
 }
 
 @Test func engineRuleKinds() throws {
@@ -159,13 +164,26 @@ private func userRules(_ o: [String: Any]) -> [[String: Any]] { Array(routeRules
     #expect(rules[2] as NSDictionary == ["process_path": ["/usr/bin/curl"], "server": "local-dns"])
 }
 
-@Test func engineIPv6OnlyWhenConfigured() throws {
-    let v4 = try engine()
-    #expect(first(v4, "inbounds")["address"] as? [String] == ["172.19.0.1/30"])
+@Test func engineRejectsIPv6WhenTunnelCannotCarryIt() throws {
+    let v4 = try engine(profile([rule(.cidr, "::/0")], default: .direct))
+    #expect(first(v4, "inbounds")["address"] as? [String] == ["172.19.0.1/30", "fdfe:dcba:9876::1/126"])
+    #expect(first(v4, "inbounds")["route_address"] == nil)
     #expect((v4["dns"] as! [String: Any])["strategy"] as? String == "ipv4_only")
-    let v6 = try engine(wg: "[Interface]\nPrivateKey=a\nAddress=10.0.0.2/32, fd00::2/128\n[Peer]\nPublicKey=p\nAllowedIPs=0.0.0.0/0, ::/0\n")
+    #expect(routeRules(v4)[0] as NSDictionary == ["ip_version": 6, "action": "reject"])
+    #expect(userRules(v4)[0] as NSDictionary == ["ip_cidr": ["::/0"], "outbound": "direct"])
+
+    let addressOnly = try engine(wg: "[Interface]\nPrivateKey=a\nAddress=10.0.0.2/32, fd00::2/128\n[Peer]\nPublicKey=p\nAllowedIPs=0.0.0.0/0\n")
+    #expect((addressOnly["dns"] as! [String: Any])["strategy"] as? String == "ipv4_only")
+    #expect(routeRules(addressOnly)[0] as NSDictionary == ["ip_version": 6, "action": "reject"])
+}
+
+@Test func engineCapturesIPv6EvenWithPartialAllowedIPs() throws {
+    let v6 = try engine(wg: "[Interface]\nPrivateKey=a\nAddress=10.0.0.2/32, fd00::2/128\n[Peer]\nPublicKey=p\nAllowedIPs=10.0.0.0/8, fd00::/8\n")
     #expect(first(v6, "inbounds")["address"] as? [String] == ["172.19.0.1/30", "fdfe:dcba:9876::1/126"])
+    #expect(first(v6, "inbounds")["route_address"] as? [String] == ["10.0.0.0/8"])
     #expect((v6["dns"] as! [String: Any])["strategy"] == nil)
+    #expect(routeRules(v6)[0] as NSDictionary == ["action": "sniff"])
+    #expect(first(first(v6, "endpoints"), "peers")["allowed_ips"] as? [String] == ["10.0.0.0/8", "fd00::/8"])
 }
 
 @Test func enginePartialAllowedIPsBecomeRouteAddress() throws {
