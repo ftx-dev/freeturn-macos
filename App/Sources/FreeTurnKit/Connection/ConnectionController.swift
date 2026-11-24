@@ -3,7 +3,7 @@ import Observation
 
 /// Почему подключение не состоялось или оборвалось. Текст для человека даёт интерфейс.
 public enum ConnectionFailure: Equatable, Sendable {
-    case noAddress, noCallLink, noWireGuard, badWireGuard, invalidRule, noNetwork
+    case noAddress, badIPv6Address, noCallLink, noWireGuard, badWireGuard, invalidRule, noNetwork
     case daemonNotInstalled, daemonVersionMismatch, daemonBusy
     case core(String)
     case engine(String)
@@ -71,7 +71,11 @@ public final class ConnectionController {
     public func connect(server: Server, profile: RoutingProfile, settings: AppSettings, ownClientId: String) async {
         guard !state.isActive else { return }
         let client = server.client
-        guard !client.serverAddress.trimmingCharacters(in: .whitespaces).isEmpty else { return fail(.noAddress) }
+        let address = client.serverAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !address.isEmpty else { return fail(.noAddress) }
+        if !address.hasPrefix("["), address.firstIndex(of: ":") != address.lastIndex(of: ":") {
+            return fail(.badIPv6Address)
+        }
         if client.provider == Provider.relay,
            client.callLink.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return fail(.noCallLink) }
         guard client.wireGuardActive else { return fail(.noWireGuard) }
@@ -142,7 +146,7 @@ public final class ConnectionController {
         let coreConfig = CoreConfig.build(server: server, listenPort: port, ownClientId: ownClientId,
                                           systemDNS: net.dns, advancedCaptcha: settings.advancedCaptcha)
         core.send(.args(config: coreConfig))
-        core.send(.start(config: coreConfig, ifIndex: net.ifIndex))
+        core.send(.start(config: coreConfig, ifIndex: net.ifIndex, ifIndex6: net.ifIndex6))
 
         network.onChange = { [weak self] snapshot in self?.networkChanged(snapshot) }
         network.start()
@@ -224,7 +228,7 @@ public final class ConnectionController {
         networkLost = false
         lastNetwork = snapshot
         onLog?(LogLine(level: .info, source: .app, text: "Смена сети: \(snapshot.ifName) - переподключение"))
-        core.send(.reconnect(ifIndex: snapshot.ifIndex, dns: snapshot.dns))
+        core.send(.reconnect(ifIndex: snapshot.ifIndex, ifIndex6: snapshot.ifIndex6, dns: snapshot.dns))
     }
 
     /// Короткий сон аллокации реле переживают; после долгого ядро надо разбудить сразу.

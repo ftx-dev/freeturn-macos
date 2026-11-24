@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pion/dtls/v3"
+	"github.com/pion/dtls/v3/pkg/crypto/selfsign"
 	"github.com/samosvalishe/free-turn-proxy/mobile"
 )
 
@@ -79,7 +81,7 @@ func state(s string) func(map[string]any) bool {
 }
 
 // directConfig - валидный конфиг ядра без сети: direct на закрытый локальный порт.
-func directConfig(t *testing.T) string {
+func directConfig(t *testing.T, peer string) string {
 	t.Helper()
 	pc, err := net.ListenPacket("udp", "127.0.0.1:0")
 	if err != nil {
@@ -92,7 +94,7 @@ func directConfig(t *testing.T) string {
 	if err := json.Unmarshal([]byte(mobile.DefaultConfigJSON()), &cfg); err != nil {
 		t.Fatal(err)
 	}
-	cfg["peer"] = "127.0.0.1:1"
+	cfg["peer"] = peer
 	cfg["provider"] = "direct"
 	cfg["clientId"] = "0123456789abcdef0123456789abcdef"
 	cfg["proxy"].(map[string]any)["listen"] = fmt.Sprintf("127.0.0.1:%d", port)
@@ -119,15 +121,56 @@ func TestStartBadConfig(t *testing.T) {
 
 func TestStartStopDirect(t *testing.T) {
 	h := start(t)
-	h.send(map[string]any{"cmd": "start", "config": directConfig(t), "ifIndex": 0})
+	h.send(map[string]any{"cmd": "start", "config": directConfig(t, "127.0.0.1:1"), "ifIndex": 0})
 	h.wait("connecting", state("connecting"))
 	h.send(map[string]any{"cmd": "stop"})
 	h.wait("idle", state("idle"))
 }
 
+func TestConnectDirectToIPv6Server(t *testing.T) {
+	lo, err := net.InterfaceByName("lo0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cert, err := selfsign.GenerateSelfSigned()
+	if err != nil {
+		t.Fatal(err)
+	}
+	listener, err := dtls.ListenWithOptions("udp6", &net.UDPAddr{IP: net.IPv6loopback},
+		dtls.WithCertificates(cert),
+		dtls.WithExtendedMasterSecret(dtls.RequireExtendedMasterSecret),
+		dtls.WithCipherSuites(dtls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	go func() {
+		conn, err := listener.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		var clientID [258]byte
+		if _, err := conn.Read(clientID[:]); err != nil {
+			t.Errorf("read client ID over DTLS: %v", err)
+			return
+		}
+		// Сервер подтверждает получение Client ID одним байтом ACK.
+		if _, err := conn.Write([]byte{0x06}); err != nil {
+			t.Errorf("acknowledge client ID: %v", err)
+			return
+		}
+		<-t.Context().Done()
+	}()
+
+	h := start(t)
+	h.send(map[string]any{"cmd": "start", "config": directConfig(t, listener.Addr().String()), "ifIndex6": lo.Index})
+	h.wait("connected to the IPv6 endpoint", state("connected"))
+}
+
 func TestEOFExits(t *testing.T) {
 	h := start(t)
-	h.send(map[string]any{"cmd": "start", "config": directConfig(t), "ifIndex": 0})
+	h.send(map[string]any{"cmd": "start", "config": directConfig(t, "127.0.0.1:1"), "ifIndex": 0})
 	h.wait("connecting", state("connecting"))
 	h.in.Close()
 	select {
@@ -146,7 +189,7 @@ func TestEOFExits(t *testing.T) {
 
 func TestArgs(t *testing.T) {
 	h := start(t)
-	h.send(map[string]any{"cmd": "args", "config": directConfig(t)})
+	h.send(map[string]any{"cmd": "args", "config": directConfig(t, "127.0.0.1:1")})
 	e := h.wait("args", ev("args"))
 	if !strings.Contains(e["args"].(string), "-provider direct") {
 		t.Fatalf("args = %v", e["args"])

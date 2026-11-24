@@ -4,11 +4,13 @@ import SystemConfiguration
 public struct NetworkSnapshot: Equatable, Sendable {
     public var ifName: String
     public var ifIndex: Int32
+    public var ifIndex6: Int32?
     public var dns: [String]
 
-    public init(ifName: String, ifIndex: Int32, dns: [String]) {
+    public init(ifName: String, ifIndex: Int32, ifIndex6: Int32? = nil, dns: [String]) {
         self.ifName = ifName
         self.ifIndex = ifIndex
+        self.ifIndex6 = ifIndex6
         self.dns = dns
     }
 }
@@ -20,19 +22,25 @@ public enum SystemNetwork {
         func value(_ key: String) -> [String: Any]? {
             SCDynamicStoreCopyValue(store, key as CFString) as? [String: Any]
         }
-        let primary = value("State:/Network/Global/IPv4")?["PrimaryInterface"] as? String
+        let primary4 = value("State:/Network/Global/IPv4")?["PrimaryInterface"] as? String
+        let primary6 = value("State:/Network/Global/IPv6")?["PrimaryInterface"] as? String
         let dns = value("State:/Network/Global/DNS")?["ServerAddresses"] as? [String] ?? []
-        return snapshot(primaryInterface: primary, dns: dns) { Int32(if_nametoindex($0)) }
+        return snapshot(primaryInterface: primary4, ipv6Interface: primary6, dns: dns) { Int32(if_nametoindex($0)) }
     }
 
     /// nil - сети нет или default route держит чужой туннель: привязываться не к чему.
-    static func snapshot(primaryInterface: String?, dns: [String],
+    static func snapshot(primaryInterface: String?, ipv6Interface: String? = nil, dns: [String],
                          indexOf: (String) -> Int32) -> NetworkSnapshot? {
-        guard let name = primaryInterface, !name.isEmpty,
-              !name.hasPrefix("utun"), !name.hasPrefix("lo") else { return nil }
-        let index = indexOf(name)
-        guard index > 0 else { return nil }
-        return NetworkSnapshot(ifName: name, ifIndex: index, dns: dns)
+        func physical(_ name: String?) -> (name: String, index: Int32)? {
+            guard let name, !name.isEmpty, !name.hasPrefix("utun"), !name.hasPrefix("lo") else { return nil }
+            let index = indexOf(name)
+            return index > 0 ? (name, index) : nil
+        }
+
+        let ipv6 = physical(ipv6Interface)
+        guard let primary = physical(primaryInterface) ?? ipv6 else { return nil }
+        let ipv6Index = ipv6.flatMap { $0.index == primary.index ? nil : $0.index }
+        return NetworkSnapshot(ifName: primary.name, ifIndex: primary.index, ifIndex6: ipv6Index, dns: dns)
     }
 }
 

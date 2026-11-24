@@ -13,10 +13,11 @@ import (
 )
 
 type command struct {
-	Cmd     string `json:"cmd"`
-	Config  string `json:"config"`
-	IfIndex int    `json:"ifIndex"`
-	DNS     string `json:"dns"`
+	Cmd      string `json:"cmd"`
+	Config   string `json:"config"`
+	IfIndex  int    `json:"ifIndex"`
+	IfIndex6 int    `json:"ifIndex6"`
+	DNS      string `json:"dns"`
 }
 
 type event struct {
@@ -78,7 +79,7 @@ func (s sink) OnCaptcha(url string, manual bool) {
 
 type protector struct{}
 
-func (protector) Protect(fd int) bool { return bindToInterface(fd, int(boundIf.Load())) }
+func (protector) Protect(fd int) bool { return bindToInterface(fd) }
 
 // Run обслуживает команды до EOF на in. EOF значит, что приложение умерло:
 // ядро останавливается, чтобы не осталось сессии без хозяина.
@@ -117,7 +118,7 @@ func Run(in io.Reader, out io.Writer, stateDir string) error {
 func handle(e *emitter, c command) {
 	switch c.Cmd {
 	case "start":
-		SetInterface(c.IfIndex)
+		setInterfaces(c.IfIndex, c.IfIndex6)
 		if err := mobile.Start(c.Config); err != nil {
 			e.send(event{Ev: "error", Cmd: "start", Err: err.Error()})
 		}
@@ -125,7 +126,7 @@ func handle(e *emitter, c command) {
 		mobile.Stop()
 		e.send(event{Ev: "state", State: mobile.StateIdle})
 	case "reconnect":
-		SetInterface(c.IfIndex)
+		setInterfaces(c.IfIndex, c.IfIndex6)
 		if c.DNS != "" {
 			mobile.SetDNSServers(c.DNS)
 		}

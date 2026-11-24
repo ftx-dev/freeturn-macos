@@ -45,9 +45,10 @@ private func parsed(_ command: CoreCommand) -> [String: Any] {
     #expect(start["ifIndex"] as? Int == 14)
     #expect(parsed(.stop)["cmd"] as? String == "stop")
     #expect(parsed(.wake)["cmd"] as? String == "wake")
-    let re = parsed(.reconnect(ifIndex: 7, dns: ["1.1.1.1", "8.8.8.8"]))
+    let re = parsed(.reconnect(ifIndex: 7, ifIndex6: 8, dns: ["1.1.1.1", "8.8.8.8"]))
     #expect(re["cmd"] as? String == "reconnect")
     #expect(re["ifIndex"] as? Int == 7)
+    #expect(re["ifIndex6"] as? Int == 8)
     #expect(re["dns"] as? String == "1.1.1.1,8.8.8.8")
     #expect(parsed(.args(config: "{}"))["cmd"] as? String == "args")
 }

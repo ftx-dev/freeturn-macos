@@ -20,7 +20,7 @@ public enum CoreConfig {
             : []
 
         let config: [String: Any] = [
-            "peer": c.serverAddress,
+            "peer": c.serverAddress.trimmingCharacters(in: .whitespacesAndNewlines),
             "clientId": c.clientId.isEmpty ? ownClientId : c.clientId,
             "subUrl": "",
             "provider": c.provider,

@@ -2,6 +2,15 @@ import Foundation
 import Testing
 @testable import FreeTurnKit
 
+@Test func selectsIPv6PhysicalInterface() {
+    let indexOf: (String) -> Int32 = { $0 == "en1" ? 15 : 14 }
+    #expect(SystemNetwork.snapshot(primaryInterface: nil, ipv6Interface: "en1", dns: [], indexOf: indexOf)
+            == NetworkSnapshot(ifName: "en1", ifIndex: 15, dns: []))
+    #expect(SystemNetwork.snapshot(primaryInterface: "en0", ipv6Interface: "en1", dns: [], indexOf: indexOf)
+            == NetworkSnapshot(ifName: "en0", ifIndex: 14, ifIndex6: 15, dns: []))
+    #expect(SystemNetwork.snapshot(primaryInterface: "utun4", ipv6Interface: "utun5", dns: [], indexOf: indexOf) == nil)
+}
+
 @Test func snapshotFromPhysicalInterface() {
     let s = SystemNetwork.snapshot(primaryInterface: "en0", dns: ["192.168.1.1"]) { _ in 14 }
     #expect(s == NetworkSnapshot(ifName: "en0", ifIndex: 14, dns: ["192.168.1.1"]))

@@ -118,19 +118,22 @@ public enum CoreEvent: Equatable, Sendable {
 
 /// Команды процессу freeturn-core (строки JSON в его stdin).
 public enum CoreCommand: Equatable, Sendable {
-    case start(config: String, ifIndex: Int32)
+    case start(config: String, ifIndex: Int32, ifIndex6: Int32? = nil)
     case stop
-    case reconnect(ifIndex: Int32, dns: [String])
+    case reconnect(ifIndex: Int32, ifIndex6: Int32? = nil, dns: [String])
     case wake
     case args(config: String)
 
     public func encoded() -> String {
-        let object: [String: Any]
+        var object: [String: Any]
         switch self {
-        case let .start(config, ifIndex): object = ["cmd": "start", "config": config, "ifIndex": Int(ifIndex)]
+        case let .start(config, ifIndex, ifIndex6):
+            object = ["cmd": "start", "config": config, "ifIndex": Int(ifIndex)]
+            object["ifIndex6"] = ifIndex6
         case .stop: object = ["cmd": "stop"]
-        case let .reconnect(ifIndex, dns):
+        case let .reconnect(ifIndex, ifIndex6, dns):
             object = ["cmd": "reconnect", "ifIndex": Int(ifIndex), "dns": dns.joined(separator: ",")]
+            object["ifIndex6"] = ifIndex6
         case .wake: object = ["cmd": "wake"]
         case let .args(config): object = ["cmd": "args", "config": config]
         }

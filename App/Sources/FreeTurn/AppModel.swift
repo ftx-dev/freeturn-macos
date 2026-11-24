@@ -415,6 +415,7 @@ final class AppModel {
     func text(for failure: ConnectionFailure) -> String {
         switch failure {
         case .noAddress: L("У сервера не указан адрес")
+        case .badIPv6Address: L("Укажите IPv6-адрес сервера в формате [IPv6]:порт.")
         case .noCallLink: L("Для Relay нужна ссылка на звонок")
         case .noWireGuard: L("Добавьте конфиг WireGuard, чтобы подключиться")
         case .badWireGuard: L("Не удалось разобрать конфиг WireGuard")

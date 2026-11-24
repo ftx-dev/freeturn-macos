@@ -84,7 +84,7 @@ import Testing
     }
 
     var startCommand: [String: Any]? {
-        for case let .start(config, _) in core.commands {
+        for case let .start(config, _, _) in core.commands {
             return try? JSONSerialization.jsonObject(with: Data(config.utf8)) as? [String: Any]
         }
         return nil
@@ -118,11 +118,33 @@ import Testing
     #expect(peer["port"] as? Int == 41000)
     #expect((rig.startCommand?["proxy"] as? [String: Any])?["listen"] as? String == "127.0.0.1:41000")
     let ifIndexes = rig.core.commands.compactMap { command -> Int32? in
-        if case let .start(_, ifIndex) = command { return ifIndex }
+        if case let .start(_, ifIndex, _) = command { return ifIndex }
         return nil
     }
     #expect(ifIndexes == [11])
     #expect((rig.startCommand?["dns"] as? [String: Any])?["servers"] as? [String] == ["192.168.1.1"])
+}
+
+@MainActor @Test func connectsToBracketedIPv6ServerAndRebindsOnNetworkChange() async {
+    var rig = Rig()
+    rig.server.client.serverAddress = " [2001:db8::42]:56000 "
+    rig.network.snapshot = NetworkSnapshot(ifName: "en0", ifIndex: 11, ifIndex6: 12, dns: [])
+    await rig.connect()
+    #expect(rig.startCommand?["peer"] as? String == "[2001:db8::42]:56000")
+    #expect(rig.core.commands.contains { command in
+        if case .start(_, 11, 12) = command { return true }
+        return false
+    })
+    rig.controller.networkChanged(NetworkSnapshot(ifName: "en0", ifIndex: 11, ifIndex6: 13, dns: []))
+    #expect(rig.core.commands.last == .reconnect(ifIndex: 11, ifIndex6: 13, dns: []))
+}
+
+@MainActor @Test func unbracketedIPv6ShowsAddressError() async {
+    var rig = Rig()
+    rig.server.client.serverAddress = "2001:db8::42:56000"
+    await rig.connect()
+    #expect(rig.controller.state == .failed(.badIPv6Address))
+    #expect(rig.core.commands.isEmpty)
 }
 
 @MainActor @Test func disconnectStopsEngineThenCore() async {

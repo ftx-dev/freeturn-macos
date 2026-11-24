@@ -56,7 +56,7 @@ do {
     let engine = try EngineConfig.build(wg: WGConfig.parse(server.client.wireGuardConfig), corePort: port,
                                         profile: profile, settings: EngineSettings(stack: options["stack"] ?? "mixed"))
 
-    let start = try JSONSerialization.data(withJSONObject: ["cmd": "start", "config": core, "ifIndex": Int(net.ifIndex)])
+    let start = Data(CoreCommand.start(config: core, ifIndex: net.ifIndex, ifIndex6: net.ifIndex6).encoded().utf8)
     try (start + Data("\n".utf8)).write(to: outDir.appendingPathComponent("core-start.jsonl"))
     try Data(engine.utf8).write(to: outDir.appendingPathComponent("engine.json"))
     // В файлах ключи: закрываем от других пользователей.

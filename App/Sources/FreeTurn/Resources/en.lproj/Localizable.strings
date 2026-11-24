@@ -53,6 +53,8 @@
 "Адрес" = "Address";
 "Адрес TURN-узла" = "TURN node address";
 "Адрес сервера" = "Server address";
+"IPv6-адрес указывайте в квадратных скобках перед портом, например [2001:db8::1]:56000." = "Put the IPv6 address in brackets before the port, for example [2001:db8::1]:56000.";
+"Укажите IPv6-адрес сервера в формате [IPv6]:порт." = "Enter the server’s IPv6 address as [IPv6]:port.";
 "Активный" = "Active";
 "Альтернативный TURN-узел" = "Alternative TURN node";
 "Без названия" = "Untitled";
