@@ -101,7 +101,7 @@ struct LogsView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 1) {
                         ForEach(lines) { line in
-                            Text(render(line))
+                            logText(line)
                                 .font(.system(.caption, design: .monospaced))
                                 .foregroundStyle(color(line.level))
                                 .textSelection(.enabled)
@@ -123,7 +123,27 @@ struct LogsView: View {
     }
 
     private func render(_ line: LogLine) -> String {
-        "\(Self.time.string(from: line.date)) [\(line.source.rawValue)] \(line.text)"
+        prefix(line) + line.text
+    }
+
+    private func prefix(_ line: LogLine) -> String {
+        "\(Self.time.string(from: line.date)) [\(line.source.rawValue)] "
+    }
+
+    private func logText(_ line: LogLine) -> Text {
+        guard let segments = line.segments else { return Text(render(line)) }
+        var message = AttributedString(prefix(line))
+        for segment in segments {
+            var part = AttributedString(segment.text)
+            if let foreground = segment.foreground { part.foregroundColor = color(foreground) }
+            if let background = segment.background { part.backgroundColor = color(background) }
+            message.append(part)
+        }
+        return Text(message)
+    }
+
+    private func color(_ rgb: LogLine.RGB) -> Color {
+        Color(red: Double(rgb.red) / 255, green: Double(rgb.green) / 255, blue: Double(rgb.blue) / 255)
     }
 
     private func color(_ level: LogLevel) -> Color {

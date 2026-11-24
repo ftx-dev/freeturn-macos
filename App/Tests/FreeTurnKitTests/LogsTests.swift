@@ -5,6 +5,40 @@ import Testing
 private let key64 = String(repeating: "ab12", count: 16)
 private let id32 = String(repeating: "cd34", count: 8)
 
+@Test func decodesColorsFromEngineLogs() throws {
+    let line = LogLine(level: .info, source: .engine,
+                       text: "\u{1B}[36mINFO\u{1B}[0m [\u{1B}[38;5;215m2763569863\u{1B}[0m 1ms] соединение")
+    let segments = try #require(line.segments)
+    #expect(line.text == "INFO [2763569863 1ms] соединение")
+    #expect(segments.map(\.text) == ["INFO", " [", "2763569863", " 1ms] соединение"])
+    #expect(segments.map(\.foreground) == [
+        .init(red: 0, green: 205, blue: 205), nil, .init(red: 255, green: 175, blue: 95), nil,
+    ])
+}
+
+@Test func extendedForegroundAndBackgroundResetIndependently() throws {
+    let line = LogLine(level: .info, source: .engine,
+                       text: "\u{1B}[38;2;1;2;3;104mимя\u{1B}[39m🙂\u{1B}[49m!")
+    let segments = try #require(line.segments)
+    let blue = LogLine.RGB(red: 92, green: 92, blue: 255)
+    #expect(line.text == "имя🙂!")
+    #expect(segments.map(\.foreground) == [.init(red: 1, green: 2, blue: 3), nil, nil])
+    #expect(segments.map(\.background) == [blue, blue, nil])
+}
+
+@Test func redactionKeepsSafeColorsAndMasksSecretsSplitByColor() {
+    var line = LogLine(level: .info, source: .engine, text: "\u{1B}[36mINFO\u{1B}[0m peer 1.2.3.4:443")
+    line.redactText(secrets: [])
+    #expect(line.text == "INFO peer x.x.x.x:•")
+    #expect(line.segments?.first?.foreground != nil)
+    #expect(line.segments?.map(\.text).joined() == line.text)
+
+    var split = LogLine(level: .info, source: .engine, text: "key=abc\u{1B}[31mdef\u{1B}[0m")
+    split.redactText(secrets: ["abcdef"])
+    #expect(split.text == "key=•••")
+    #expect(split.segments == nil)
+}
+
 @Test func redactsAddresses() {
     #expect(Redactor.redact("dial 1.2.3.4:56000 ok", secrets: []) == "dial x.x.x.x:• ok")
     #expect(Redactor.redact("peer 203.0.113.10 up", secrets: []) == "peer x.x.x.x up")

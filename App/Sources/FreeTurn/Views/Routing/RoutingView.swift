@@ -79,14 +79,21 @@ struct RoutingView: View {
     }
 
     private func profileRow(_ profile: RoutingProfile) -> some View {
-        HStack(alignment: .top) {
+        let name = model.displayName(profile)
+        let isDefault = profile.id == model.routing.sharedProfileId
+        return HStack(alignment: .top) {
             Image(systemName: profile.builtIn ? "lock" : "arrow.triangle.branch")
                 .foregroundStyle(.secondary).frame(width: 20)
             VStack(alignment: .leading, spacing: 2) {
-                Text(model.displayName(profile))
-                if profile.id == model.routing.sharedProfileId {
-                    Text(L("По умолчанию")).font(.caption).foregroundStyle(.secondary)
-                }
+                Text(name)
+                    .lineLimit(1)
+                    .help(name)
+                Text(L("По умолчанию"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .opacity(isDefault ? 1 : 0)
+                    .accessibilityHidden(!isDefault)
             }
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -103,7 +110,7 @@ struct RoutingView: View {
                     .listRowSeparator(.hidden)
                 }
             }
-            .frame(width: 250)
+            .frame(width: 280)
 
             Divider()
 

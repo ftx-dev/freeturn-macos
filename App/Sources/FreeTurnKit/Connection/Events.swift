@@ -18,18 +18,47 @@ public enum LogLevel: String, Sendable, CaseIterable { case debug, info, warn, e
 public enum LogSource: String, Sendable, CaseIterable { case core, engine, app }
 
 public struct LogLine: Identifiable, Equatable, Sendable {
+    public struct RGB: Equatable, Sendable {
+        public let red: UInt8
+        public let green: UInt8
+        public let blue: UInt8
+    }
+
+    public struct Segment: Equatable, Sendable {
+        public internal(set) var text: String
+        public let foreground: RGB?
+        public let background: RGB?
+    }
+
     public var id: Int
     public var date: Date
     public var level: LogLevel
     public var source: LogSource
-    public var text: String
+    public private(set) var text: String
+    public private(set) var segments: [Segment]?
 
     public init(id: Int = 0, date: Date = Date(), level: LogLevel, source: LogSource, text: String) {
         self.id = id
         self.date = date
         self.level = level
         self.source = source
-        self.text = text
+        let segments = ANSIColors.decode(text)
+        self.text = segments?.map(\.text).joined() ?? text
+        self.segments = segments
+    }
+
+    public mutating func redactText(secrets: [String], maskAddresses: Bool = true) {
+        let redacted = Redactor.redact(text, secrets: secrets, maskAddresses: maskAddresses)
+        guard redacted != text else { return }
+        text = redacted
+        if let segments {
+            let redactedSegments = segments.map {
+                Segment(text: Redactor.redact($0.text, secrets: secrets, maskAddresses: maskAddresses),
+                        foreground: $0.foreground, background: $0.background)
+            }
+            // Секрет может пересекать границы цвета. Тогда показываем результат редактирования всей строки.
+            self.segments = redactedSegments.map(\.text).joined() == redacted ? redactedSegments : nil
+        }
     }
 }
 

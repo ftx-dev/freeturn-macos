@@ -349,10 +349,10 @@ final class AppModel {
     func log(_ line: LogLine) {
         var line = line
         if settings.privacyMode {
-            line.text = Redactor.redact(line.text, secrets: secrets)
+            line.redactText(secrets: secrets)
         } else if line.text.hasPrefix("Команда:") {
             // Команду запуска часто копируют в чаты: ссылку на звонок и ключи прячем всегда.
-            line.text = Redactor.redact(line.text, secrets: secrets, maskAddresses: false)
+            line.redactText(secrets: secrets, maskAddresses: false)
         }
         logs.append(line)
         logFile.append("\(Self.logTime.string(from: line.date)) [\(line.source.rawValue)] [\(line.level.rawValue)] \(line.text)")
